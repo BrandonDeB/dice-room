@@ -18,67 +18,6 @@ export class DiceView extends ItemView {
 		this.plugin = plugin;
 		this.container = this.contentEl.createDiv({cls: 'dice-parent'})
 		this.rollers = new Map();
-
-		this.ws = new WebSocket(`${this.plugin.settings.serverAddress}`);
-
-		this.ws.onmessage = (e) => {
-			const data = JSON.parse(e.data);
-
-			if (data.type == "roll") {
-				const notation = data.results;
-				this.rollers.get(data.user).roll(notation);
-			} else if (data.type == "join") {
-				const rollView = document.getElementById('scene-container');
-				if (rollView != null && rollView.instanceOf(HTMLDivElement)) {
-					this.createDiceObject(data.user, rollView);
-				}
-			} else if (data.type == "leave") {
-				this.removeUser(data.user);
-			} else if (data.type == "join_ack") {
-				this.container.empty();
-				this.container.createEl('h2', { text: this.room });
-				const textInp = this.container.createEl('input', { text: 'Dice View', type: 'text' });
-				const btn = this.container.createEl('button', { text: 'Roll', type: 'button' });
-				const leave = this.container.createEl('button', { text: 'Leave Room', type: 'button' });
-				currentUser = data.user_id;
-
-				btn.addEventListener('click', () => {
-					const results = new DiceNotation(textInp.value, true);
-
-					this.ws.send(JSON.stringify({
-						"type": "roll",
-						"user": currentUser,
-						"results": results.stringify(true),
-						"room":  this.room,
-					}));
-
-				});
-
-				leave.addEventListener('click', () => {
-					this.ws.send(JSON.stringify({
-						"type": "leave",
-						"id": currentUser,
-						"room":  this.room,
-					}));
-
-					currentUser = 0;
-					this.room = "";
-					this.onOpen();
-
-				});
-
-				textInp.addEventListener("keypress", function(event) {
-					if (event.key === "Enter") {
-						event.preventDefault();
-						btn.click();
-					}
-				});
-
-				requestAnimationFrame(() => {
-					this.createDiceObjects(data.users);
-				})
-			}
-		}
 	}
 
 	getViewType() {
@@ -176,13 +115,78 @@ export class DiceView extends ItemView {
 	}
 
 	joinRoom(room: string) {
-		this.ws.send(JSON.stringify({
-			"type": "join",
-			"name": this.plugin.settings.displayName,
-			"room": room,
-			"frontColor": this.plugin.settings.frontColor,
-			"backColor": this.plugin.settings.backColor,
-		}))
+
+		this.ws = new WebSocket(`${this.plugin.settings.serverAddress}`);
+
+		this.ws.onopen = (event) => {
+			this.ws.send(JSON.stringify({
+				"type": "join",
+				"name": this.plugin.settings.displayName,
+				"room": room,
+				"frontColor": this.plugin.settings.frontColor,
+				"backColor": this.plugin.settings.backColor,
+			}))
+		};
+
+		this.ws.onmessage = (e) => {
+			const data = JSON.parse(e.data);
+
+			if (data.type == "roll") {
+				const notation = data.results;
+				this.rollers.get(data.user).roll(notation);
+			} else if (data.type == "join") {
+				const rollView = document.getElementById('scene-container');
+				if (rollView != null && rollView.instanceOf(HTMLDivElement)) {
+					this.createDiceObject(data.user, rollView);
+				}
+			} else if (data.type == "leave") {
+				this.removeUser(data.user);
+			} else if (data.type == "join_ack") {
+				this.container.empty();
+				this.container.createEl('h2', { text: this.room });
+				const textInp = this.container.createEl('input', { text: 'Dice View', type: 'text' });
+				const btn = this.container.createEl('button', { text: 'Roll', type: 'button' });
+				const leave = this.container.createEl('button', { text: 'Leave Room', type: 'button' });
+				currentUser = data.user_id;
+
+				btn.addEventListener('click', () => {
+					const results = new DiceNotation(textInp.value, true);
+
+					this.ws.send(JSON.stringify({
+						"type": "roll",
+						"user": currentUser,
+						"results": results.stringify(true),
+						"room":  this.room,
+					}));
+
+				});
+
+				leave.addEventListener('click', () => {
+					this.ws.send(JSON.stringify({
+						"type": "leave",
+						"id": currentUser,
+						"room":  this.room,
+					}));
+
+					currentUser = 0;
+					this.room = "";
+					this.ws?.close();
+					this.onOpen();
+
+				});
+
+				textInp.addEventListener("keypress", function(event) {
+					if (event.key === "Enter") {
+						event.preventDefault();
+						btn.click();
+					}
+				});
+
+				requestAnimationFrame(() => {
+					this.createDiceObjects(data.users);
+				})
+			}
+		}
 		this.room = room;
 	}
 

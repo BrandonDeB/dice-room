@@ -18,8 +18,6 @@ const DEFAULT_SETTINGS: DiceRoomPluginSettings = {
 
 export default class DiceRoomPlugin extends Plugin {
 	settings: DiceRoomPluginSettings;
-	ws: WebSocket | null = null;
-	reconnectTimeout: number | null = null;
 
 	async onload() {
 		await this.loadSettings();
@@ -43,7 +41,6 @@ export default class DiceRoomPlugin extends Plugin {
 		});
 
 		this.addSettingTab(new DiceRollSettingTab(this.app, this));
-
 
 	}
 
