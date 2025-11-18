@@ -12,12 +12,14 @@ export class DiceView extends ItemView {
 	container: HTMLElement;
 	ws: WebSocket;
 	room: string;
+	popupTimeouts: Map<number, NodeJS.Timeout>;
 
 	constructor(leaf: WorkspaceLeaf, plugin: DiceRoomPlugin) {
 		super(leaf);
 		this.plugin = plugin;
 		this.container = this.contentEl.createDiv({cls: 'dice-parent'})
 		this.rollers = new Map();
+		this.popupTimeouts = new Map();
 	}
 
 	getViewType() {
@@ -76,9 +78,10 @@ export class DiceView extends ItemView {
 				if (userPopup != null) {
 					userPopup.style.display = "block";
 
-					// setTimeout(() => {
-					// 	userPopup.style.display = "none";
-					// }, 5000);
+					this.popupTimeouts.set(user, setTimeout(() => {
+						userPopup.style.display = "none";
+						this.popupTimeouts.delete(user);
+					}, 10000));
 				}
 			}
 		});
@@ -88,7 +91,6 @@ export class DiceView extends ItemView {
 	private removeUser(user: number) {
 		let roller = this.rollers.get(user);
 		if (roller) {
-			roller = null;
 			this.rollers.delete(user);
 		}
 		const elem = document.getElementById(this.getRollAreaId(user));
@@ -114,6 +116,20 @@ export class DiceView extends ItemView {
 		});
 	}
 
+	public rollDice(notation: string) {
+		const results = new DiceNotation(notation, true);
+		if (this.ws && this.ws.readyState == WebSocket.OPEN) {
+			this.ws.send(JSON.stringify({
+				"type": "roll",
+				"user": currentUser,
+				"results": results.stringify(true),
+				"room":  this.room,
+			}));
+		} else {
+			console.error("WebSocket is not open to roll");
+		}
+	}
+
 	joinRoom(room: string) {
 
 		this.ws = new WebSocket(`${this.plugin.settings.serverAddress}`);
@@ -133,7 +149,16 @@ export class DiceView extends ItemView {
 
 			if (data.type == "roll") {
 				const notation = data.results;
-				this.rollers.get(data.user).roll(notation);
+				const popup = document.getElementById(`popup-${data.user}`);
+				if (popup) popup.style.display = "none";
+				if (this.popupTimeouts.has(data.user)) {
+					const popupTimeoutID = this.popupTimeouts.get(data.user);
+					clearTimeout(popupTimeoutID);
+				}
+				const roller = this.rollers.get(data.user);
+				if (roller) {
+					roller.roll(notation);
+				}
 			} else if (data.type == "join") {
 				const rollView = document.getElementById('scene-container');
 				if (rollView != null && rollView.instanceOf(HTMLDivElement)) {
@@ -150,15 +175,7 @@ export class DiceView extends ItemView {
 				currentUser = data.user_id;
 
 				btn.addEventListener('click', () => {
-					const results = new DiceNotation(textInp.value, true);
-
-					this.ws.send(JSON.stringify({
-						"type": "roll",
-						"user": currentUser,
-						"results": results.stringify(true),
-						"room":  this.room,
-					}));
-
+					this.rollDice(textInp.value);
 				});
 
 				leave.addEventListener('click', () => {

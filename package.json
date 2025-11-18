@@ -23,6 +23,7 @@
 	},
 	"dependencies": {
 		"@3d-dice/dice-box-threejs": "file:../../../../../Projects/dice-box-threejs",
-		"three": "^0.181.0"
+		"three": "^0.181.0",
+		"yaml": "^2.8.1"
 	}
 }

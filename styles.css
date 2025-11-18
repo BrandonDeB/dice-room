@@ -6,6 +6,26 @@ available in the app when your plugin is enabled.
 If your plugin does not need CSS, delete this file.
 
 */
+.modifier-wrapper {
+	display: flex;
+	alignItems: center;
+	gap: 8px;
+}
+
+.checkbox-input {
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	margin: 0;
+}
+
+.roll-wrapper {
+	display: flex;
+	alignItems: center;
+	gap: 8px;
+}
+
 .dice-parent {
 	width: 100%;
 	height: 100%;
