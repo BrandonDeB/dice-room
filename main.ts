@@ -55,8 +55,6 @@ export default class DiceRoomPlugin extends Plugin {
 		this.addSettingTab(new DiceRollSettingTab(this.app, this));
 
 		this.registerMarkdownCodeBlockProcessor('dicelist', (source, el, ctx) => {
-			//const lines = source.split('\n').filter(str => str.trim().length > 0);
-			//let lineIndex = 0;
 
 			const modWrapper = el.createEl('div', { cls: 'modifier-wrapper' });
 			modWrapper.style.display = "flex";
@@ -133,78 +131,6 @@ export default class DiceRoomPlugin extends Plugin {
 
 				});
 			}
-			// while (lineIndex < lines.length && (lines[lineIndex].includes(':') || /^\s*$/.test(lines[lineIndex]))) {
-			// 	const parts = lines[lineIndex].split(':');
-			// 	if (parts.length < 2) { lineIndex++; continue; }
-			//
-			// 	const name = parts[0].trim();
-			// 	const value = Number(parts[1].trim());
-			//
-			// 	modifiers.set(name, 0);
-			//
-			// 	modWrapper.createEl('p', { text: lines[lineIndex] });
-			//
-			// 	const toggleContainer = modWrapper.createDiv({ cls: 'checkbox-container' });
-			// 	const toggle = toggleContainer.createEl('input', { type: 'checkbox', cls: 'checkbox-input' });
-			// 	toggle.style.width = "100%";
-			// 	toggle.style.height = "100%";
-			//
-			// 	toggle.addEventListener('change', () => {
-			// 		if (toggle.checked) {
-			// 			toggleContainer.classList.add('is-enabled'); 
-			// 			modifiers.set(name, value);
-			// 		} else {
-			// 			toggleContainer.classList.remove('is-enabled');
-			// 			modifiers.set(name, 0);
-			// 		}
-			//
-			// 		rollTextEls.forEach(textEl => {
-			// 			const originalSource = textEl.getAttribute('data-source')!;
-			// 			const updatedText = originalSource.replace(/\{\{\s*([\w-]+)\s*\}\}/g, (match, key) => {
-			// 				const modVal = modifiers.get(key);
-			// 				return modVal !== undefined ? modVal.toString() : "0";
-			// 			});
-			// 			textEl.textContent = updatedText;
-			// 		});
-			// 	});
-			//
-			// 	lineIndex++;
-			// 	}
-
-			// while (lineIndex < lines.length && (/\d/.test(lines[lineIndex]) || /^\s*$/.test(lines[lineIndex]))) {
-			// 	const rollWrapper = el.createEl('div', { cls: 'roll-wrapper' });
-			// 	rollWrapper.style.display = "flex";
-			// 	rollWrapper.style.alignItems = "center";
-			// 	rollWrapper.style.gap = "8px";
-			//
-			// 	const textEl = rollWrapper.createEl('p', { text: lines[lineIndex] });
-			// 	textEl.setAttribute('data-source', lines[lineIndex]);
-			// 	rollTextEls.push(textEl);
-			//
-			// 	const parsedText = lines[lineIndex].replace(/\{\{\s*([\w-]+)\s*\}\}/g, (match, key) => {
-			// 		const value = modifiers.get(key);
-			// 		return value !== undefined ? value.toString() : "0";
-			// 	});
-			// 	textEl.textContent = parsedText;
-			//
-			// 	const btn = rollWrapper.createEl('button', { text: "Roll", cls: 'roll-me' });
-			// 	btn.addEventListener('click', () => {
-			// 		const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_DICE);
-			// 		const currentText = textEl.getAttribute('data-source')!.replace(/\{\{\s*([\w-]+)\s*\}\}/g, (match, key) => {
-			// 			const modVal = modifiers.get(key);
-			// 			return modVal !== undefined ? modVal.toString() : "0"; // fallback 0
-			// 		});
-			// 		const backendText = collapseAdditions(currentText);
-			// 		if (leaves.length > 0) {
-			// 			console.log(`parsedText: ${backendText}`);
-			// 			leaves[0].view.rollDice(backendText);
-			// 		} else {
-			// 			new Notice("Not connected to a room");
-			// 		}
-			// 	});
-
-				//lineIndex++;    
-		// 	}
 		});
 
 
