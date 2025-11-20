@@ -6,6 +6,13 @@ import DiceRoomPlugin from "./main";
 export const VIEW_TYPE_DICE = 'dice-view';
 let currentUser = 0;
 
+export type CustomDice = {
+	foreground: string,
+	background: string,
+	texture: string,
+	material: string
+}
+
 export class DiceView extends ItemView {
 	plugin: DiceRoomPlugin;
 	rollers: Map<number, DiceBox>;
@@ -13,6 +20,7 @@ export class DiceView extends ItemView {
 	ws: WebSocket;
 	room: string;
 	popupTimeouts: Map<number, NodeJS.Timeout>;
+	die: CustomDice;
 
 	constructor(leaf: WorkspaceLeaf, plugin: DiceRoomPlugin) {
 		super(leaf);
@@ -39,6 +47,8 @@ export class DiceView extends ItemView {
 		return "dice"
 	}
 
+
+
 	createPopup(parent: HTMLDivElement, user: number) {
 		const popup = parent.createDiv({cls: 'popup', attr: {id: `popup-${user}`}});
 		const closeButton = popup.createEl("span", {text: "×", cls: 'close-btn'});
@@ -57,13 +67,9 @@ export class DiceView extends ItemView {
 		return popup;
 	}
 
-	private createDiceBox(user: number, frontColor: string, backColor: string) {
+	private createDiceBox(user: number, diceSettings: CustomDice) {
 		return new DiceBox(`#${this.getRollAreaId(user)}`, {
-			theme_customColorset: {
-				background: backColor,
-				foreground: frontColor,
-				material: "metal" // metal | glass | plastic | wood
-			},
+			theme_customColorset: diceSettings,
 			light_intensity: 1,
 			gravity_multiplier: 400,
 			baseScale: 100,
@@ -99,17 +105,16 @@ export class DiceView extends ItemView {
 		}
 	}
 
-	private createDiceObject(user: {id: number, name: string, frontColor: string, backColor: string}, rollView: HTMLDivElement) {
+	private createDiceObject(user: {id: number, name: string, die: CustomDice}, rollView: HTMLDivElement) {
 		const ua = rollView.createDiv({cls: "single-roller", attr: {id: this.getRollAreaId(user.id)}});
 		ua.createEl("h3", {cls: "player-label", text: user.name});
 		this.createPopup(ua, user.id);
-
-		const Box = this.createDiceBox(user.id, user.frontColor, user.backColor);
+		const Box = this.createDiceBox(user.id, user.die);
 		Box.initialize();
 		this.rollers.set(user.id, Box);
 	}
 
-	private createDiceObjects(users: {id: number, name: string, frontColor: string, backColor: string}[]) {
+	private createDiceObjects(users: {id: number, name: string, die: CustomDice}[]) {
 		const rollView = this.container.createDiv({ cls: 'rollView', attr: {id: "scene-container"} });
 		users.forEach(user => {
 			this.createDiceObject(user, rollView);
@@ -130,6 +135,15 @@ export class DiceView extends ItemView {
 		}
 	}
 
+	getDie() {
+		return {
+			foreground: this.plugin.settings.frontColor,
+			background: this.plugin.settings.backColor,
+			material: this.plugin.settings.material,
+			texture: this.plugin.settings.texture
+		}
+	}
+
 	joinRoom(room: string) {
 
 		this.ws = new WebSocket(`${this.plugin.settings.serverAddress}`);
@@ -139,8 +153,7 @@ export class DiceView extends ItemView {
 				"type": "join",
 				"name": this.plugin.settings.displayName,
 				"room": room,
-				"frontColor": this.plugin.settings.frontColor,
-				"backColor": this.plugin.settings.backColor,
+				"die": this.getDie(),
 			}))
 		};
 

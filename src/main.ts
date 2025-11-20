@@ -1,20 +1,7 @@
-import { App, WorkspaceLeaf, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
-import { DiceView, VIEW_TYPE_DICE } from 'view';
+import { WorkspaceLeaf, Notice, Plugin } from 'obsidian';
+import { DiceView, VIEW_TYPE_DICE } from './view';
 import { parse as yamlParse } from "yaml";
-
-interface DiceRoomPluginSettings {
-	serverAddress: string;
-	displayName: string;
-	frontColor: string;
-	backColor: string;
-}
-
-const DEFAULT_SETTINGS: DiceRoomPluginSettings = {
-	serverAddress: 'ws://localhost:8765',
-	displayName: 'Anonymous',
-	frontColor: '#ffffff',
-	backColor: '#000000'
-}
+import { DiceRoomPluginSettings, DiceRollSettingTab, DEFAULT_SETTINGS } from './settings';
 
 type YAMLConfig = {
 	modifiers: {
@@ -22,6 +9,7 @@ type YAMLConfig = {
 	};
 	rolls: string[];
 };
+
 
 function collapseAdditions(str: string): string {
     const numbers = str.match(/\b\d+\b/g)?.map(Number) || [];
@@ -37,7 +25,6 @@ function collapseAdditions(str: string): string {
 
 export default class DiceRoomPlugin extends Plugin {
 	settings: DiceRoomPluginSettings;
-
 
 	async onload() {
 		const rollTextEls: HTMLParagraphElement[] = [];
@@ -64,7 +51,6 @@ export default class DiceRoomPlugin extends Plugin {
 			const modifiers = new Map<string, number>();
 			const rollTextEls: HTMLParagraphElement[] = [];
 			const rollData = yamlParse(source) as YAMLConfig;
-			console.log(JSON.stringify(rollData));
 			for (const [name, value] of Object.entries(rollData.modifiers)) {
 				modifiers.set(name, 0);
 
@@ -168,61 +154,5 @@ export default class DiceRoomPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
-	}
-}
-
-class DiceRollSettingTab extends PluginSettingTab {
-	plugin: DiceRoomPlugin;
-
-	constructor(app: App, plugin: DiceRoomPlugin) {
-		super(app, plugin);
-		this.plugin = plugin;
-	}
-
-	display(): void {
-		const {containerEl} = this;
-
-		containerEl.empty();
-
-		new Setting(containerEl)
-			.setName('Backend Server Address')
-			.setDesc('Put address to host')
-			.addText(text => text
-				.setPlaceholder('Enter the address')
-				.setValue(this.plugin.settings.serverAddress)
-				.onChange(async (value) => {
-					this.plugin.settings.serverAddress = value;
-					await this.plugin.saveSettings();
-				}));
-
-		new Setting(containerEl)
-			.setName('Display Name')
-			.setDesc('The name that will show to other room members')
-			.addText(text => text
-				.setPlaceholder('Enter your name')
-				.setValue(this.plugin.settings.displayName)
-				.onChange(async (value) => {
-					this.plugin.settings.displayName = value;
-				}));
-
-		new Setting(containerEl)
-			.setName('Dice Background Color')
-			.setDesc('Main color of dice')
-			.addColorPicker(value =>  { value
-				.setValue(this.plugin.settings.frontColor)
-				.onChange(async (value) => {
-					this.plugin.settings.frontColor = value;
-				})
-			})
-
-		new Setting(containerEl)
-			.setName('Dice Foreground Color')
-			.setDesc('Text Color on Dice')
-			.addColorPicker(value =>  { value
-				.setValue(this.plugin.settings.backColor)
-				.onChange(async (value) => {
-					this.plugin.settings.backColor = value;
-				})
-			})
 	}
 }
