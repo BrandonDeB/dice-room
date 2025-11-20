@@ -1,7 +1,7 @@
 import { App, AbstractInputSuggest, TextComponent, PluginSettingTab, Setting } from 'obsidian';
 import DiceRoomPlugin from './main';
-import { TEXTURELIST } from '@3d-dice/dice-box-threejs/src/const/texturelist';
-import { MATERIALTYPES} from '@3d-dice/dice-box-threejs/src/const/materialtypes';
+import { DiceBox, TEXTURELIST, MATERIALTYPES } from '@3d-dice/dice-box-threejs';
+import { CustomDice } from './types';
 
 export interface DiceRoomPluginSettings {
 	serverAddress: string;
@@ -52,16 +52,37 @@ export class TextureSuggest extends AbstractInputSuggest<string> {
 
 export class DiceRollSettingTab extends PluginSettingTab {
 	plugin: DiceRoomPlugin;
+	previewRoller: DiceBox | null;
 
 	constructor(app: App, plugin: DiceRoomPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
 
+
+	async rollRefresh(ua: HTMLDivElement) {
+		if (this.previewRoller) {
+			this.previewRoller.destroy();
+			this.previewRoller = null;
+			ua.innerHTML = '';
+		}
+		this.previewRoller = new DiceBox(`#dice-preview-container`, {
+			theme_customColorset: this.plugin.getDie(),
+			light_intensity: 1,
+			gravity_multiplier: 400,
+			baseScale: 100,
+			strength: 8,
+		});
+		await this.previewRoller.initialize();
+		this.previewRoller.roll("1d20");
+	}
+
 	display(): void {
 		const {containerEl} = this;
 
 		containerEl.empty();
+
+		new Setting(containerEl).setName("Connection Configuration").setHeading();
 
 		new Setting(containerEl)
 			.setName('Backend Server Address')
@@ -83,6 +104,8 @@ export class DiceRollSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.displayName = value;
 				}));
+
+		new Setting(containerEl).setName("Dice Customization").setHeading();
 
 		new Setting(containerEl)
 			.setName('Dice Background Color')
@@ -132,5 +155,16 @@ export class DiceRollSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				});
 			});
+		
+		new Setting(containerEl).setName("Dice Preview").setHeading();
+
+
+		const btn = containerEl.createEl('button', { text: 'Refresh', type: 'button' });
+		const ua = containerEl.createDiv({cls: "preview-roller", attr: {id: "dice-preview-container"}});
+
+		btn.addEventListener('click', () => {
+			this.rollRefresh(ua);
+		});
+
 	}
 }

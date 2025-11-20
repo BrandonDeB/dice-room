@@ -1,17 +1,10 @@
-import { ItemView, WorkspaceLeaf } from 'obsidian';
-import DiceBox from '@3d-dice/dice-box-threejs';
-import { DiceNotation } from '@3d-dice/dice-box-threejs/src/DiceNotation.js';
+import { ItemView, Notice, WorkspaceLeaf } from 'obsidian';
+import { DiceBox, DiceNotation } from '@3d-dice/dice-box-threejs';
 import DiceRoomPlugin from "./main";
+import { CustomDice } from "./types";
 
 export const VIEW_TYPE_DICE = 'dice-view';
 let currentUser = 0;
-
-export type CustomDice = {
-	foreground: string,
-	background: string,
-	texture: string,
-	material: string
-}
 
 export class DiceView extends ItemView {
 	plugin: DiceRoomPlugin;
@@ -131,16 +124,7 @@ export class DiceView extends ItemView {
 				"room":  this.room,
 			}));
 		} else {
-			console.error("WebSocket is not open to roll");
-		}
-	}
-
-	getDie() {
-		return {
-			foreground: this.plugin.settings.frontColor,
-			background: this.plugin.settings.backColor,
-			material: this.plugin.settings.material,
-			texture: this.plugin.settings.texture
+			new Notice("Join a room to roll your dice!");	
 		}
 	}
 
@@ -153,7 +137,7 @@ export class DiceView extends ItemView {
 				"type": "join",
 				"name": this.plugin.settings.displayName,
 				"room": room,
-				"die": this.getDie(),
+				"die": this.plugin.getDie(),
 			}))
 		};
 

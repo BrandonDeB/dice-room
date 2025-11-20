@@ -26,6 +26,15 @@ function collapseAdditions(str: string): string {
 export default class DiceRoomPlugin extends Plugin {
 	settings: DiceRoomPluginSettings;
 
+	getDie() {
+		return {
+			foreground: this.settings.frontColor,
+			background: this.settings.backColor,
+			material: this.settings.material,
+			texture: this.settings.texture
+		}
+	}
+
 	async onload() {
 		const rollTextEls: HTMLParagraphElement[] = [];
 		await this.loadSettings();
@@ -43,6 +52,7 @@ export default class DiceRoomPlugin extends Plugin {
 
 		this.registerMarkdownCodeBlockProcessor('dicelist', (source, el, ctx) => {
 
+			const modHeader = el.createEl("h1", {text: "Modifiers"});
 			const modWrapper = el.createEl('div', { cls: 'modifier-wrapper' });
 			modWrapper.style.display = "flex";
 			modWrapper.style.alignItems = "center";
@@ -81,6 +91,7 @@ export default class DiceRoomPlugin extends Plugin {
 					});
 				});
 			}
+			el.createEl("h1", {text: "Rolls"});
 			for (const [name, value] of Object.entries(rollData.rolls)) {
 				const rollWrapper = el.createEl('div', { cls: 'roll-wrapper' });
 				rollWrapper.style.display = "flex";
@@ -109,10 +120,9 @@ export default class DiceRoomPlugin extends Plugin {
 					const backendText = collapseAdditions(currentText);
 
 					if (leaves.length > 0) {
-						console.log(`parsedText: ${backendText}`);
 						leaves[0].view.rollDice(backendText);
 					} else {
-						new Notice("Not connected to a room");
+						new Notice("Open the rolling menu and join a room!");
 					}
 
 				});
@@ -129,9 +139,7 @@ export default class DiceRoomPlugin extends Plugin {
 	async activateView() {
 		const { workspace } = this.app;
 
-		let leaf: WorkspaceLeaf | null = null;
-		const leaves = workspace.getLeavesOfType(VIEW_TYPE_DICE);
-
+		let leaf: WorkspaceLeaf | null = null; const leaves = workspace.getLeavesOfType(VIEW_TYPE_DICE);
 
 		if (leaves.length > 0) {
 

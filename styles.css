@@ -52,6 +52,14 @@ If your plugin does not need CSS, delete this file.
 	flex-direction: column;
 }
 
+.preview-roller {
+	height: 40%;
+	width: 100%;
+	outline: 2px solid rgba(256, 256, 256, 0.4);
+	border-radius: 2px;
+	position: relative;
+}
+
 .single-roller {
 	height: 40vh;
 	width: 90%;
