@@ -12,6 +12,16 @@ If your plugin does not need CSS, delete this file.
 	gap: 8px;
 }
 
+.drawer-item {
+	display: inline-block;
+}
+
+.header {
+	position: sticky;
+	top: 0;
+	z-index: 20;
+}
+
 .checkbox-input {
 	top: 0;
 	left: 0;

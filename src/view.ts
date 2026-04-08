@@ -2,6 +2,7 @@ import { ItemView, Notice, WorkspaceLeaf } from 'obsidian';
 import { DiceBox, DiceNotation } from '@3d-dice/dice-box-threejs';
 import DiceRoomPlugin from "./main";
 import { CustomDice } from "./types";
+import JoinRoomScreen from "./screens/join-room"
 
 export const VIEW_TYPE_DICE = 'dice-view';
 let currentUser = 0;
@@ -67,7 +68,7 @@ export class DiceView extends ItemView {
 			gravity_multiplier: 400,
 			baseScale: 100,
 			strength: 8,
-			onRollComplete: (results) => {
+			onRollComplete: (results: { notation: string; total: number }) => {
 
 				const popupText = document.getElementById(`popup-text-${user}`);
 				if (popupText != null) {
@@ -128,7 +129,7 @@ export class DiceView extends ItemView {
 		}
 	}
 
-	joinRoom(room: string) {
+	public joinRoom(room: string) {
 
 		this.ws = new WebSocket(`${this.plugin.settings.serverAddress}`);
 
@@ -165,10 +166,11 @@ export class DiceView extends ItemView {
 				this.removeUser(data.user);
 			} else if (data.type == "join_ack") {
 				this.container.empty();
-				this.container.createEl('h2', { text: this.room });
-				const textInp = this.container.createEl('input', { text: 'Dice View', type: 'text' });
-				const btn = this.container.createEl('button', { text: 'Roll', type: 'button' });
-				const leave = this.container.createEl('button', { text: 'Leave Room', type: 'button' });
+				const header = this.container.createDiv({cls: 'header'})
+				header.createEl('h2', { text: this.room });
+				const textInp = header.createEl('input', { text: 'Dice View', type: 'text' });
+				const btn = header.createEl('button', { text: 'Roll', type: 'button' });
+				const leave = header.createEl('button', { text: 'Leave Room', type: 'button' });
 				currentUser = data.user_id;
 
 				btn.addEventListener('click', () => {
@@ -204,23 +206,13 @@ export class DiceView extends ItemView {
 		this.room = room;
 	}
 
+
 	async onOpen() {
 
 		this.container.empty();
-		this.container.createEl('h2', { text: 'Join a Room' });
-		const textInp = this.container.createEl('input', { text: 'Room Name', type: 'text' });
-		const btn = this.container.createEl('button', { text: 'Join', type: 'button' });
+		let joinRoomScreen = new JoinRoomScreen(this.container, this)
+		joinRoomScreen.render()
 
-		btn.addEventListener('click', () => {
-			this.joinRoom(textInp.value);
-		});
-
-		textInp.addEventListener("keypress", function(event) {
-			if (event.key === "Enter") {
-				event.preventDefault();
-				btn.click();
-			}
-		});
 	}
 
 	async onClose() {
