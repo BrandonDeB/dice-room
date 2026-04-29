@@ -1,6 +1,7 @@
 import { WorkspaceLeaf, Notice, Plugin } from 'obsidian';
 import { DiceView, VIEW_TYPE_DICE } from './view';
 import { DiceRoomPluginSettings, DiceRollSettingTab, DEFAULT_SETTINGS } from './settings';
+import { setApp } from './ui-lib/app-provider';
 import CodeBlock from './codeblock';
 
 export default class DiceRoomPlugin extends Plugin {
@@ -18,6 +19,7 @@ export default class DiceRoomPlugin extends Plugin {
 	async onload() {
 		const rollTextEls: HTMLParagraphElement[] = [];
 		await this.loadSettings();
+		setApp(this.app);
 
 		this.registerView(
 			VIEW_TYPE_DICE,

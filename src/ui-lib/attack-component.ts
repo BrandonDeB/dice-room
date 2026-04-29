@@ -1,5 +1,5 @@
 import { BaseComponent } from "./base-component"
-import { DiceNotation, DiceRoll } from "./ui-types";
+import { DiceNotation } from "./ui-types";
 
 export interface AttackAttributes {
 	type: string;
@@ -13,8 +13,8 @@ export interface AttackAttributes {
 
 export abstract class AttackComponent implements BaseComponent {
 	container: HTMLDivElement;
-	hitRoll: DiceRoll;
-	damageRoll: DiceRoll;
+	hitRoll: DiceNotation;
+	damageRoll: DiceNotation;
 	type: string;
 	name: string | undefined;
 	description: string | undefined;
@@ -29,8 +29,8 @@ export abstract class AttackComponent implements BaseComponent {
 		el: HTMLElement,
 		attributes: AttackAttributes
 	) {
-		this.hitRoll = new DiceRoll(new DiceNotation(attributes.hitRoll))
-		this.damageRoll = new DiceRoll(new DiceNotation(attributes.damageRoll));
+		this.hitRoll = new DiceNotation(attributes.hitRoll);
+		this.damageRoll = new DiceNotation(attributes.damageRoll);
 		this.name = attributes.name;
 		this.description = attributes.description;
 		this.picture = attributes.picture;
