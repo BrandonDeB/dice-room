@@ -1,10 +1,10 @@
 {
 	"id": "dice-room",
 	"name": "Dice Room",
-	"version": "1.1.0",
+	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
 	"description": "A dice rolling plugin for Obsidian",
-	"author": "brandon",
-	"authorUrl": "",
+	"author": "bdebaro",
+	"authorUrl": "https://bdebaro.me",
 	"isDesktopOnly": false
 }
