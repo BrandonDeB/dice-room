@@ -14,3 +14,8 @@ The project also uses a customized version of [dice-box-threejs](https://github.
 
 - Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
 - Configure settings to use the hosted web server and personal settings
+
+## Now usable with the BRAT Github Plugin
+Check out the links at:
++ [Repo](https://github.com/TfTHacker/obsidian42-brat)
++ [Documentation](https://tfthacker.com/BRAT)
