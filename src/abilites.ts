@@ -14,7 +14,10 @@ export type Skill = typeof SKILLS[number];
 
 export const ABILITIES = [
 	"Strength",
+	"Dexterity",
+	"Constitution",
 	"Wisdom",
+	"Intelligence",
 	"Dexterity",
 ] as const
 
@@ -27,17 +30,6 @@ export type AbilityInfo = {
 
 export type CharacterStats = Record<Ability, AbilityInfo>;
 
-export const Stats: Record<Ability, AbilityInfo> = {
-	"Strength": {
-		proficient: false,
-		value: 12
-	},
-	"Wisdom": {
-		proficient: true,
-		value: 12
-	},
-	"Dexterity": {
-		proficient: true,
-		value: 12
-	}
+export function getAbilityModifier(stat: number): number {
+	return Math.floor((stat - 10) / 2)
 }

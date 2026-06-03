@@ -8,8 +8,25 @@ If your plugin does not need CSS, delete this file.
 */
 .modifier-wrapper {
 	display: flex;
-	alignItems: center;
+	align-items: center;
 	gap: 8px;
+}
+
+.ability-full-container {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+	padding: 8px
+}
+
+.ability-container {
+	align-items: center;
+	text-align: center;
+	flex: 1;
+	outline: 2px solid rgba(256, 256, 256, 0.4);
+	border-radius: 2px;
+	cursor: pointer;
 }
 
 .drawer-item {
@@ -32,7 +49,7 @@ If your plugin does not need CSS, delete this file.
 
 .roll-wrapper {
 	display: flex;
-	alignItems: center;
+	align-items: center;
 	gap: 8px;
 }
 

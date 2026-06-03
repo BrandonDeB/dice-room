@@ -8,6 +8,9 @@ export class ProficienyComponent implements BaseComponent {
 
 	type: string;
 	container: HTMLDivElement;
+	setRollCallback(cb: (notation: string) => void): void {
+		this.onRoll = cb;
+	}
 	onRoll: (notation: string) => void;
 	el: HTMLElement;
 

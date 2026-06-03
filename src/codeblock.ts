@@ -2,7 +2,7 @@ import { MarkdownPostProcessorContext } from "obsidian";
 import { parse as yamlParse } from "yaml";
 import { WeaponComponent, WeaponAttributes } from "./ui-lib/weapon-component";
 import { SpellComponent, SpellAttributes } from "./ui-lib/spell-component";
-import { StatComponent, StatAttributes } from "./ui-lib/stats-component";
+import { StatsComponent, StatAttributes } from "./ui-lib/stats-component";
 import { BaseComponent, BaseAttributes } from "./ui-lib/base-component";
 
 const UITypes = {
@@ -53,10 +53,11 @@ export default class CodeBlock {
 			break;
 			case UITypes.STATS:
 				const statData = yamlParse(this.source) as StatAttributes;
-				this.component = new StatComponent(
+				this.component = new StatsComponent(
 					this.el,
-					statData
+					statData,
 				);
+			break;
 			default:
 				return;
 		}

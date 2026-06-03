@@ -1,4 +1,4 @@
-import { ABILITIES, Ability } from 'src/abilites';
+import { ABILITIES, Ability, getAbilityModifier } from 'src/abilites';
 import { BaseComponent } from './base-component';
 
 export interface StatAttributes {
@@ -25,11 +25,24 @@ export class StatsComponent implements BaseComponent {
 		this.attributes = attributes;
 	}
 
+	getStatRoll(index: number): string {
+		const statVal = this.attributes.stats[index]
+		const statMod = getAbilityModifier(statVal);
+		if (statMod > 0) return `1d20+${statMod}`;
+		else if (statMod < 0) return `1d20${statMod}`
+		else return `1d20`;
+	}
+
 	render() {
+		const container = this.el.createDiv({cls: 'ability-full-container'})
 		ABILITIES.map((ability: string, i: number) => {
-			const capsule = this.el.createDiv({cls: 'ability-container'});
+			const capsule = container.createDiv({cls: 'ability-container'});
 			capsule.createEl('h4', {text: ability.substring(0, 3)});
-			capsule.createEl('p', {text: this.attributes.stats[i].toString()})
+			const statVal = this.attributes.stats[i]
+			capsule.createEl('p', {text: `${statVal.toString()} (+${getAbilityModifier(statVal).toString()})`})
+			capsule.addEventListener('click', () => {
+				this.onRoll(this.getStatRoll(i))
+			})
 		})
 	}
 }
