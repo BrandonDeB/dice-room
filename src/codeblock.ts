@@ -3,6 +3,7 @@ import { parse as yamlParse } from "yaml";
 import { WeaponComponent, WeaponAttributes } from "./ui-lib/weapon-component";
 import { SpellComponent, SpellAttributes } from "./ui-lib/spell-component";
 import { StatsComponent, StatAttributes } from "./ui-lib/stats-component";
+import { SkillsComponent, SkillAttributes } from "./ui-lib/skills-component";
 import { BaseComponent, BaseAttributes } from "./ui-lib/base-component";
 
 const UITypes = {
@@ -10,6 +11,7 @@ const UITypes = {
 	CHARACTER: "character",
 	SPELL: "spell",
 	STATS: "stats",
+	SKILLS: "skills",
 }
 
 export default class CodeBlock {
@@ -59,6 +61,13 @@ export default class CodeBlock {
 					this.el,
 					statData,
 				);
+			break;
+			case UITypes.SKILLS:
+				const skillsData = yamlParse(this.source) as SkillAttributes;
+				this.component = new SkillsComponent(
+					this.el,
+					skillsData
+				)
 			break;
 			default:
 				return;
