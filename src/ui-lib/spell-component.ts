@@ -1,3 +1,4 @@
+import { MarkdownPostProcessorContext } from 'obsidian';
 import { AttackComponent, AttackAttributes } from './attack-component'
 
 const CastingTime = {
@@ -21,6 +22,7 @@ export class SpellComponent extends AttackComponent {
 
 	constructor(
 		el: HTMLElement,
+		ctx: MarkdownPostProcessorContext,
 		attributes: SpellAttributes,
 	) {
 
@@ -33,18 +35,15 @@ export class SpellComponent extends AttackComponent {
 			hitRoll: attributes.hitRoll,
 			damageRoll: attributes.damageRoll
 		}
-		super(el, superAttributes) ;
+		super(el, ctx, superAttributes) ;
 
 		this.castingTime = attributes.castingTime;
 		this.components = attributes.components;
 	}
 
 	render() {
-		this.container.createEl('p', {text: "Components:"});
-		this.container.createEl('p', {text: "Casting Time:"});
-		if (this.picture) {
-			this.container.createEl('img', {attr: {src: this.picture}})
-		}
+		this.container.createEl('p', {text: `Components: ${this.components}`});
+		this.container.createEl('p', {text: `Casting Time: ${this.castingTime}`});
 	}
 
 }

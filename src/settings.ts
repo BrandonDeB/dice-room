@@ -74,7 +74,7 @@ export class DiceRollSettingTab extends PluginSettingTab {
 			strength: 8,
 		});
 		await this.previewRoller.initialize();
-		this.previewRoller.roll("1d20");
+		this.previewRoller.roll("1d2");
 	}
 
 	display(): void {

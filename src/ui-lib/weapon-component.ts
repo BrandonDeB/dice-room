@@ -1,3 +1,4 @@
+import { MarkdownPostProcessorContext } from 'obsidian';
 import { AttackComponent, AttackAttributes } from './attack-component'
 
 export interface WeaponAttributes extends AttackAttributes{
@@ -10,6 +11,7 @@ export class WeaponComponent extends AttackComponent {
 
 	constructor(
 		el: HTMLElement,
+		ctx: MarkdownPostProcessorContext,
 		attributes: WeaponAttributes
 	) {
 		const superAttributes: AttackAttributes = { 
@@ -22,13 +24,13 @@ export class WeaponComponent extends AttackComponent {
 			damageRoll: attributes.damageRoll
 		}
 
-		super(el, superAttributes)
+		super(el, ctx, superAttributes)
 
 		this.weaponType = attributes.weaponType;
 	}
 
 	render() {
-		this.container.createEl('p', {text: "Weapon Render!"});
+		// TODO implement something unique to weapons vs other attack types
 	}
 
 }

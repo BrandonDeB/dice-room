@@ -1,5 +1,7 @@
 import { BaseComponent } from "./base-component"
 import { DiceNotation } from "./ui-types";
+import { getApp } from "./app-provider"
+import { App, MarkdownPostProcessorContext } from "obsidian";
 
 export interface AttackAttributes {
 	type: string;
@@ -20,6 +22,8 @@ export abstract class AttackComponent implements BaseComponent {
 	description: string | undefined;
 	picture: string | undefined;
 	range: string | undefined;
+	app: App; 
+	sourcePath: string;
 	onRoll: (notation: string) => void;
 	setRollCallback(cb: (notation: string) => void): void {
 		this.onRoll = cb;
@@ -27,6 +31,7 @@ export abstract class AttackComponent implements BaseComponent {
 
 	constructor(
 		el: HTMLElement,
+		ctx: MarkdownPostProcessorContext,
 		attributes: AttackAttributes
 	) {
 		this.hitRoll = new DiceNotation(attributes.hitRoll);
@@ -36,6 +41,10 @@ export abstract class AttackComponent implements BaseComponent {
 		this.picture = attributes.picture;
 		this.range = attributes.range;
 		this.type = attributes.type;
+		
+		this.app = getApp();
+		this.sourcePath = ctx.sourcePath;
+
 		this.renderBase(el);
 	}
 
@@ -49,19 +58,42 @@ export abstract class AttackComponent implements BaseComponent {
 			this.container.createEl('p', {text: this.description});
 		}
 
-		const toHitContainer = this.container.createDiv({cls: 'drawer-item'})
+		if (this.range) {
+			this.container.createEl('strong', {text: "Range: "})
+			this.container.createEl('em', {text: this.range})
+		}
+
+		const pictureWithRolls = this.container.createDiv({cls: 'image-rolls'})
+
+		if (this.picture) {
+			const cleanPath = this.picture.replace(/\[\[|\]\]/g, "");
+
+			const imgLocation = this.app.metadataCache.getFirstLinkpathDest(
+				cleanPath,
+				this.sourcePath
+			);
+
+			if (imgLocation) {
+				const img = pictureWithRolls.createEl("img", {cls: "attack-img"});
+				img.src = this.app.vault.getResourcePath(imgLocation);
+			}
+		}
+
+		const rollContainer = pictureWithRolls.createDiv({cls: 'roll-components'})
+
+		const toHitContainer = rollContainer.createDiv({cls: 'drawer-item'})
 		toHitContainer.createEl('h4', {text: `To Hit: ${this.hitRoll.toString()}`})
-		const toHitButton = toHitContainer.createEl('button', {text: "Roll", type: "button"});
+		const toHitButton = toHitContainer.createEl('button', {text: "Roll", type: "button", cls: "roller-button"});
 		toHitButton.addEventListener('click', () => {
 			this.onRoll(this.hitRoll.toString());
 		});
 
-		const damageContainer = this.container.createDiv({cls: 'drawer-item'})
+		const damageContainer = rollContainer.createDiv({cls: 'drawer-item'})
 		damageContainer.createEl('h4', {text: `Damage: ${this.damageRoll.toString()}`})
-		const damageButton = damageContainer.createEl('button', {text: "Roll"})
+		const damageButton = damageContainer.createEl('button', {text: "Roll", type: "button", cls: "roller-button"})
 
 		damageButton.addEventListener('click', () => {
-			this.onRoll(this.hitRoll.toString());
+			this.onRoll(this.damageRoll.toString());
 		});
 
 	}

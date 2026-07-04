@@ -41,6 +41,7 @@ export default class CodeBlock {
 				const weaponData = yamlParse(this.source) as WeaponAttributes;
 				this.component = new WeaponComponent(
 					this.el,
+					this.ctx,
 					weaponData,
 				);
 			break;
@@ -48,6 +49,7 @@ export default class CodeBlock {
 				const spellData = yamlParse(this.source) as SpellAttributes;
 				this.component = new SpellComponent(
 					this.el,
+					this.ctx,
 					spellData,
 				);
 			break;

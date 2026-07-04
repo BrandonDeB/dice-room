@@ -29,8 +29,37 @@ If your plugin does not need CSS, delete this file.
 	cursor: pointer;
 }
 
+.component-container {
+	border: 2px solid rgba(256, 256, 256, 0.4);
+	padding: 9px;
+}
+
+.roll-components {
+	display: block;
+	width: 50%;
+	justify-self: center;
+	justify-content: space-between;
+	align-self: center;
+}
+
+.image-rolls {
+	display: flex;
+	width: 100%;
+}
+
+.attack-img {
+	width: 50%;
+	display: block;
+}
+
 .drawer-item {
-	display: inline-block;
+	display: flex;
+	justify-content: space-between;
+}
+
+.roller-button {
+	align-self: center;
+	justify-self: center;
 }
 
 .header {
