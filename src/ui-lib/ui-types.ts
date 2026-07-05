@@ -1,5 +1,5 @@
 import { TFile } from "obsidian";
-import { getApp } from "./app-provider";
+import { getApp } from "./../app-provider";
 
 export type Dice = {
 	sides: number;

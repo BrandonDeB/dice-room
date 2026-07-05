@@ -66,7 +66,8 @@ export default class CodeBlock {
 				const skillsData = yamlParse(this.source) as SkillAttributes;
 				this.component = new SkillsComponent(
 					this.el,
-					skillsData
+					skillsData,
+					this.ctx
 				)
 			break;
 			default:

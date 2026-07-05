@@ -33,7 +33,7 @@ export class SpellComponent extends AttackComponent {
 			picture: attributes.picture,
 			range: attributes.range,
 			hitRoll: attributes.hitRoll,
-			damageRoll: attributes.damageRoll
+			damageRoll: attributes.damageRoll,
 		}
 		super(el, ctx, superAttributes) ;
 

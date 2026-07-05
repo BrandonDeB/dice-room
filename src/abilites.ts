@@ -44,7 +44,7 @@ export type AbilityInfo = {
    value: number,
 }
 
-export const SkillAbility: Record<Skill, Ability> = {
+export const SKILLABILITY: Record<Skill, Ability> = {
 	"Acrobatics": "Dexterity",
 	"Animal Handling": "Wisdom",
 	"Arcana": "Intelligence",

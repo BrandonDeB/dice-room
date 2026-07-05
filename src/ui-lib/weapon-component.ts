@@ -1,7 +1,7 @@
 import { MarkdownPostProcessorContext } from 'obsidian';
 import { AttackComponent, AttackAttributes } from './attack-component'
 
-export interface WeaponAttributes extends AttackAttributes{
+export interface WeaponAttributes extends AttackAttributes {
 	weaponType: string | undefined;
 }
 
@@ -21,7 +21,7 @@ export class WeaponComponent extends AttackComponent {
 			picture: attributes.picture,
 			range: attributes.range,
 			hitRoll: attributes.hitRoll,
-			damageRoll: attributes.damageRoll
+			damageRoll: attributes.damageRoll,
 		}
 
 		super(el, ctx, superAttributes)

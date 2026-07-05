@@ -1,7 +1,7 @@
 import { ABILITIES, Ability, getAbilityModifier } from 'src/abilites';
-import { BaseComponent } from './base-component';
+import { BaseAttributes, BaseComponent } from './base-component';
 
-export interface StatAttributes {
+export interface StatAttributes extends BaseAttributes {
 	stats: number[];
 	proficiencies: Ability[];
 }

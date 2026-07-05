@@ -6,12 +6,33 @@ available in the app when your plugin is enabled.
 If your plugin does not need CSS, delete this file.
 
 */
+
+/* Skills Components */
+.skill-full-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* two columns */
+    gap: 0.5rem;
+	cursor: pointer;
+}
+
+.skill-container {
+    display: flex;
+    align-items: space-between;
+    gap: 0.5rem;
+}
+
+.skill-container h3,
+.skill-container p {
+    margin: 0;
+}
+
 .modifier-wrapper {
 	display: flex;
 	align-items: center;
 	gap: 8px;
 }
 
+/* Abilities Components */
 .ability-full-container {
 	display: flex;
 	align-items: center;
@@ -153,6 +174,7 @@ If your plugin does not need CSS, delete this file.
 	background: none;
 	border: none;
 }
+
 #rollBtn {
 	position: relative;
 	cursor: pointer;

@@ -1,7 +1,7 @@
 import { WorkspaceLeaf, Notice, Plugin } from 'obsidian';
 import { DiceView, VIEW_TYPE_DICE } from './view';
 import { DiceRoomPluginSettings, DiceRollSettingTab, DEFAULT_SETTINGS } from './settings';
-import { setApp } from './ui-lib/app-provider';
+import { setApp } from './app-provider';
 import CodeBlock from './codeblock';
 
 export default class DiceRoomPlugin extends Plugin {

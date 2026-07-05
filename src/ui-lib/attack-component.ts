@@ -1,9 +1,9 @@
-import { BaseComponent } from "./base-component"
+import { BaseAttributes, BaseComponent } from "./base-component"
 import { DiceNotation } from "./ui-types";
-import { getApp } from "./app-provider"
+import { getApp } from "./../app-provider"
 import { App, MarkdownPostProcessorContext } from "obsidian";
 
-export interface AttackAttributes {
+export interface AttackAttributes extends BaseAttributes {
 	type: string;
 	name: string | undefined;
 	description: string | undefined;
@@ -17,6 +17,7 @@ export abstract class AttackComponent implements BaseComponent {
 	container: HTMLDivElement;
 	hitRoll: DiceNotation;
 	damageRoll: DiceNotation;
+	attributes: AttackAttributes;
 	type: string;
 	name: string | undefined;
 	description: string | undefined;
