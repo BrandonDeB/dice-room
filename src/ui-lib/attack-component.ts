@@ -1,7 +1,8 @@
-import { BaseAttributes, BaseComponent } from "./base-component"
+import { BaseAttributes } from "./base-component"
 import { DiceNotation } from "./ui-types";
 import { getApp } from "./../app-provider"
 import { App, MarkdownPostProcessorContext } from "obsidian";
+import { RollableComponent } from "./rollable-component";
 
 export interface AttackAttributes extends BaseAttributes {
 	type: string;
@@ -13,18 +14,19 @@ export interface AttackAttributes extends BaseAttributes {
 	range: string | undefined;
 }
 
-export abstract class AttackComponent implements BaseComponent {
+export abstract class AttackComponent implements RollableComponent {
 	container: HTMLDivElement;
 	hitRoll: DiceNotation;
 	damageRoll: DiceNotation;
 	attributes: AttackAttributes;
-	type: string;
 	name: string | undefined;
 	description: string | undefined;
 	picture: string | undefined;
 	range: string | undefined;
 	app: App; 
 	sourcePath: string;
+	ctx: MarkdownPostProcessorContext;
+	el: HTMLElement;
 	onRoll: (notation: string) => void;
 	setRollCallback(cb: (notation: string) => void): void {
 		this.onRoll = cb;
@@ -41,7 +43,8 @@ export abstract class AttackComponent implements BaseComponent {
 		this.description = attributes.description;
 		this.picture = attributes.picture;
 		this.range = attributes.range;
-		this.type = attributes.type;
+		this.el = el;
+		this.ctx = ctx;
 		
 		this.app = getApp();
 		this.sourcePath = ctx.sourcePath;

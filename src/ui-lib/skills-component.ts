@@ -1,17 +1,17 @@
 import { ABILITIES, SKILLS, Skill, Ability, getAbilityModifier, SKILLABILITY} from 'src/abilites';
-import { BaseComponent, BaseAttributes } from './base-component';
-import { MarkdownPostProcessorContext, TFile } from 'obsidian';
-import { getApp } from './../app-provider';
+import { BaseAttributes } from './base-component';
+import { MarkdownPostProcessorContext } from 'obsidian';
 import { StatAttributes } from './stats-component';
 import { getCodeBlock } from 'src/utilities';
+import { RollableComponent } from './rollable-component';
 
 export interface SkillAttributes extends BaseAttributes {
-	proficiencies: Skill[];
+	proficiency: Skill[];
+	expertise: Skill[];
 }
 
-export class SkillsComponent implements BaseComponent {
+export class SkillsComponent implements RollableComponent {
 
-	type: string;
 	el: HTMLElement;
 	attributes: SkillAttributes;
 	skillModifiers: Map<Skill, number> = new Map();
@@ -66,7 +66,13 @@ export class SkillsComponent implements BaseComponent {
 
 			this.skillModifiers.set(skill, this.statModifiers.get(relevantStat) ?? 0)
 
-			if (this.attributes.proficiencies.some(
+			if (this.attributes.expertise.some(
+				expertise => expertise.toLowerCase() == skill.toLowerCase()
+			)) {
+				this.skillModifiers.set(skill, (this.statModifiers.get(relevantStat) ?? 0) + 4)
+			}
+
+			if (this.attributes.proficiency.some(
 				proficiency => proficiency.toLowerCase() == skill.toLowerCase()
 			)) {
 				this.skillModifiers.set(skill, (this.statModifiers.get(relevantStat) ?? 0) + 2)

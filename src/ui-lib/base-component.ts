@@ -1,14 +1,15 @@
+import { MarkdownPostProcessorContext } from "obsidian";
+
 export interface BaseAttributes {
 	type: string;
 }
 
-export interface BaseComponent {
-	type: string;
+export abstract class BaseComponent {
 	attributes: BaseAttributes;
 
-	onRoll: (notation: string) => void;
-	setRollCallback: (cb: (notation: string) => void) => void;
+	el: HTMLElement;
+	ctx: MarkdownPostProcessorContext
 
-	render(): void;
+	abstract render(): void;
 
 }

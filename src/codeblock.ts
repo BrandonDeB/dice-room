@@ -5,6 +5,8 @@ import { SpellComponent, SpellAttributes } from "./ui-lib/spell-component";
 import { StatsComponent, StatAttributes } from "./ui-lib/stats-component";
 import { SkillsComponent, SkillAttributes } from "./ui-lib/skills-component";
 import { BaseComponent, BaseAttributes } from "./ui-lib/base-component";
+import { InventoryComponent, InventoryAttributes } from "./ui-lib/inventory";
+import { isRollable } from "./ui-lib/rollable-component";
 
 const UITypes = {
 	WEAPON: "weapon",
@@ -12,6 +14,7 @@ const UITypes = {
 	SPELL: "spell",
 	STATS: "stats",
 	SKILLS: "skills",
+	INVENTORY: "inventory",
 }
 
 export default class CodeBlock {
@@ -59,6 +62,7 @@ export default class CodeBlock {
 				const statData = yamlParse(this.source) as StatAttributes;
 				this.component = new StatsComponent(
 					this.el,
+					this.ctx,
 					statData,
 				);
 			break;
@@ -70,10 +74,20 @@ export default class CodeBlock {
 					this.ctx
 				)
 			break;
+			case UITypes.INVENTORY:
+				const invData = yamlParse(this.source) as InventoryAttributes;
+				this.component = new InventoryComponent(
+					this.el,
+					this.ctx,
+					invData,
+				)
+			break;
 			default:
-				return;
+			return;
 		}
-		this.component.setRollCallback(this.onRoll)
+		if (isRollable(this.component)) {
+			this.component.setRollCallback(this.onRoll);
+		}
 		this.component.render();
 	}
 }

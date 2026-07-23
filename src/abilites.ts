@@ -41,6 +41,7 @@ export type Ability = typeof ABILITIES[number]
 
 export type AbilityInfo = {
    proficient: boolean,
+   expertise: boolean,
    value: number,
 }
 

@@ -1,12 +1,10 @@
+import { MarkdownPostProcessorContext } from 'obsidian';
 import { BaseComponent } from './base-component'
-
-enum PROFICIENCIES {
-	"Acrobatics"
-}
 
 export class ProficienyComponent implements BaseComponent {
 
 	type: string;
+	ctx: MarkdownPostProcessorContext;
 	container: HTMLDivElement;
 	setRollCallback(cb: (notation: string) => void): void {
 		this.onRoll = cb;
@@ -15,9 +13,11 @@ export class ProficienyComponent implements BaseComponent {
 	el: HTMLElement;
 
 	constructor(
-		el: HTMLElement
+		el: HTMLElement,
+		ctx: MarkdownPostProcessorContext
 	) {
 		this.type = 'proficiencies'
+		this.ctx = ctx;
 		this.el = el;
 	}
 

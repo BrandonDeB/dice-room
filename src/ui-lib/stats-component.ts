@@ -1,16 +1,19 @@
+import { MarkdownPostProcessorContext } from 'obsidian';
 import { ABILITIES, Ability, getAbilityModifier } from 'src/abilites';
-import { BaseAttributes, BaseComponent } from './base-component';
+import { BaseAttributes } from './base-component';
+import { RollableComponent } from './rollable-component';
 
 export interface StatAttributes extends BaseAttributes {
 	stats: number[];
 	proficiencies: Ability[];
 }
 
-export class StatsComponent implements BaseComponent {
+export class StatsComponent implements RollableComponent {
 
 	type: string;
 	el: HTMLElement;
 	attributes: StatAttributes;
+	ctx: MarkdownPostProcessorContext;
 
 	onRoll: (notation: string) => void;
 	setRollCallback(cb: (notation: string) => void): void {
@@ -19,10 +22,12 @@ export class StatsComponent implements BaseComponent {
 	
 	constructor(
 		el: HTMLElement,
+		ctx: MarkdownPostProcessorContext,
 		attributes: StatAttributes,
 	) {
 		this.el = el;
 		this.attributes = attributes;
+		this.ctx = ctx;
 	}
 
 	getStatRoll(index: number): string {
