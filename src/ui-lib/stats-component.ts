@@ -1,33 +1,22 @@
-import { MarkdownPostProcessorContext } from 'obsidian';
 import { ABILITIES, Ability, getAbilityModifier } from 'src/abilites';
-import { BaseAttributes } from './base-component';
-import { RollableComponent } from './rollable-component';
+import { BaseAttributes, BaseComponent, ComponentMetadata } from './base-component';
+import { Rollable } from './capabilities';
 
 export interface StatAttributes extends BaseAttributes {
 	stats: number[];
 	proficiencies: Ability[];
 }
 
-export class StatsComponent implements RollableComponent {
+export class StatsComponent extends BaseComponent<StatAttributes> implements Rollable {
 
-	type: string;
-	el: HTMLElement;
-	attributes: StatAttributes;
-	ctx: MarkdownPostProcessorContext;
+	static readonly metadata: ComponentMetadata = {
+		type: "stats",
+		policies: ['unique']
+	}
 
 	onRoll: (notation: string) => void;
 	setRollCallback(cb: (notation: string) => void): void {
 		this.onRoll = cb;
-	}
-	
-	constructor(
-		el: HTMLElement,
-		ctx: MarkdownPostProcessorContext,
-		attributes: StatAttributes,
-	) {
-		this.el = el;
-		this.attributes = attributes;
-		this.ctx = ctx;
 	}
 
 	getStatRoll(index: number): string {
@@ -46,7 +35,7 @@ export class StatsComponent implements RollableComponent {
 			const statVal = this.attributes.stats[i]
 			capsule.createEl('p', {text: `${statVal.toString()} (+${getAbilityModifier(statVal).toString()})`})
 			capsule.addEventListener('click', () => {
-				this.onRoll(this.getStatRoll(i))
+				this.onRoll(this.getStatRoll(i));
 			})
 		})
 	}

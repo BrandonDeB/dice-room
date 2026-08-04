@@ -2,7 +2,7 @@ import { getApp } from "./app-provider";
 import { MarkdownPostProcessorContext, TFile } from "obsidian";
 import { parse as yamlParse } from "yaml";
 
-export function getCharacterFiles(ctx: MarkdownPostProcessorContext): TFile | null {
+export function getCharacterFiles(ctx: MarkdownPostProcessorContext): TFile[] | null {
 	const app = getApp()
 
 	const currentFile = app.vault.getAbstractFileByPath(ctx.sourcePath);
@@ -14,16 +14,46 @@ export function getCharacterFiles(ctx: MarkdownPostProcessorContext): TFile | nu
 
 	const currentFM = app.metadataCache.getFileCache(currentFile)?.frontmatter;
 
-	if (!currentFM) return null;
+	if (!currentFM) return [currentFile];
 
-	const foundFile = app.vault.getMarkdownFiles().find(file => {
-		const fm = app.metadataCache.getFileCache(file)?.frontmatter;
-		return fm?.character === currentFM.character;
-	});
+	const characterFiles = app.vault.getMarkdownFiles().filter(file => {
+		const fm = app.metadataCache.getFileCache(file)?.frontmatter
+		return fm?.character === currentFM.character
+	})
 
-	if (!foundFile) return null;
+	return characterFiles;
 
-	return foundFile;
+}
+
+export async function getInstancesOfBlock<T>(
+    type: string,
+	ctx: MarkdownPostProcessorContext
+): Promise<T[] | null> {
+    const app = getApp();
+	const files: TFile[] | null = getCharacterFiles(ctx);
+	
+	if (files === null) return null;
+
+	let results: T[] = []
+
+	for (const file of files) {
+
+		const text = await app.vault.cachedRead(file);
+
+		const regex = new RegExp(
+			"```dicelist\\s*\\r?\\n" +
+			"(\\s*type:\\s*" + type + "\\s*\\r?\\n" +
+			"[\\s\\S]*?)```",
+			"gm"
+		);
+
+		for (const match of text.matchAll(regex)) {
+			results.push(yamlParse(match[1]) as T);
+		}
+
+	}
+
+	return results;
 
 }
 
@@ -31,26 +61,20 @@ export async function getCodeBlock<T>(
     type: string,
 	ctx: MarkdownPostProcessorContext
 ): Promise<T | null> {
-    const app = getApp();
-	const file = getCharacterFiles(ctx);
-	
-	if (!file) return null;
+	const results = await getInstancesOfBlock<T>(type, ctx);
 
-    const text = await app.vault.read(file);
+	if (!results) return null;
 
-	const regex = new RegExp(
-		"```dicelist\\s*\\r?\\n" +
-		"\\s*type:\\s*" + type + "\\s*\\r?\\n" +
-		"([\\s\\S]*?)```",
-		"m"
-	);
+	if (results.length > 1) {
+		console.warn(`Multiple ${type} blocks found`);
+		return null;
+	}
 
-    const match = regex.exec(text);
+	if (results.length === 0) { 
+		console.warn(`No ${type} block found`);
+		return null;
+	}
 
-    if (!match) {
-        console.warn(`No ${type} block found in ${file.path}`);
-        return null;
-    }
+	return results[0];
 
-    return yamlParse(match[1]) as T;
 }

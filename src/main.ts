@@ -17,7 +17,6 @@ export default class DiceRoomPlugin extends Plugin {
 	}
 
 	async onload() {
-		const rollTextEls: HTMLParagraphElement[] = [];
 		await this.loadSettings();
 		setApp(this.app);
 
@@ -33,14 +32,14 @@ export default class DiceRoomPlugin extends Plugin {
 		this.addSettingTab(new DiceRollSettingTab(this.app, this));
 
 		this.registerMarkdownCodeBlockProcessor('dicelist', (source, el, ctx) => {
-			const rollFn = (notation: string) => {
+			const onRoll = (notation: string) => {
 				const leaves =this.app.workspace.getLeavesOfType(VIEW_TYPE_DICE);
 				const view = leaves[0]?.view as DiceView | undefined;
 				if (view) view.rollDice(notation);
 				else new Notice("Open the Dice View first!");
 			};
-			let codeblock = new CodeBlock(source, el, ctx, rollFn);
-			codeblock.initialize();
+
+			new CodeBlock(source, el, ctx, onRoll).initialize();
 		});
 	}
 

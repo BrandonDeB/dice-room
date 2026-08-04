@@ -1,8 +1,8 @@
-import { BaseAttributes } from "./base-component"
+import { BaseAttributes, BaseComponent } from "./base-component"
 import { DiceNotation } from "./ui-types";
 import { getApp } from "./../app-provider"
-import { App, MarkdownPostProcessorContext } from "obsidian";
-import { RollableComponent } from "./rollable-component";
+import { App } from "obsidian";
+import { Rollable } from "./capabilities";
 
 export interface AttackAttributes extends BaseAttributes {
 	type: string;
@@ -14,67 +14,49 @@ export interface AttackAttributes extends BaseAttributes {
 	range: string | undefined;
 }
 
-export abstract class AttackComponent implements RollableComponent {
-	container: HTMLDivElement;
+export abstract class AttackComponent extends BaseComponent<AttackAttributes> implements Rollable {
 	hitRoll: DiceNotation;
 	damageRoll: DiceNotation;
-	attributes: AttackAttributes;
 	name: string | undefined;
 	description: string | undefined;
 	picture: string | undefined;
 	range: string | undefined;
 	app: App; 
 	sourcePath: string;
-	ctx: MarkdownPostProcessorContext;
-	el: HTMLElement;
+	container: HTMLDivElement;
 	onRoll: (notation: string) => void;
 	setRollCallback(cb: (notation: string) => void): void {
 		this.onRoll = cb;
 	}
 
-	constructor(
-		el: HTMLElement,
-		ctx: MarkdownPostProcessorContext,
-		attributes: AttackAttributes
-	) {
-		this.hitRoll = new DiceNotation(attributes.hitRoll);
-		this.damageRoll = new DiceNotation(attributes.damageRoll);
-		this.name = attributes.name;
-		this.description = attributes.description;
-		this.picture = attributes.picture;
-		this.range = attributes.range;
-		this.el = el;
-		this.ctx = ctx;
-		
+	renderBase() {
+		this.hitRoll = new DiceNotation(this.attributes.hitRoll);
+		this.damageRoll = new DiceNotation(this.attributes.damageRoll);
+
 		this.app = getApp();
-		this.sourcePath = ctx.sourcePath;
-
-		this.renderBase(el);
-	}
-
-	renderBase(el: HTMLElement) {
-		this.container = el.createDiv({cls: 'component-container'});
-		if (this.name) {
-			this.container.createEl('h3', {text: this.name});
+		this.container = this.el.createDiv({cls: 'component-container'});
+		this.container = this.el.createDiv({cls: 'component-container'});
+		if (this.attributes.name) {
+			this.container.createEl('h3', {text: this.attributes.name});
 		}
 
-		if (this.description) {
-			this.container.createEl('p', {text: this.description});
+		if (this.attributes.description) {
+			this.container.createEl('p', {text: this.attributes.description});
 		}
 
-		if (this.range) {
+		if (this.attributes.range) {
 			this.container.createEl('strong', {text: "Range: "})
-			this.container.createEl('em', {text: this.range})
+			this.container.createEl('em', {text: this.attributes.range})
 		}
 
 		const pictureWithRolls = this.container.createDiv({cls: 'image-rolls'})
 
-		if (this.picture) {
-			const cleanPath = this.picture.replace(/\[\[|\]\]/g, "");
+		if (this.attributes.picture) {
+			const cleanPath = this.attributes.picture.replace(/\[\[|\]\]/g, "");
 
 			const imgLocation = this.app.metadataCache.getFirstLinkpathDest(
 				cleanPath,
-				this.sourcePath
+				this.ctx.sourcePath
 			);
 
 			if (imgLocation) {

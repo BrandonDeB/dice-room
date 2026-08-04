@@ -1,47 +1,40 @@
 import { ABILITIES, SKILLS, Skill, Ability, getAbilityModifier, SKILLABILITY} from 'src/abilites';
-import { BaseAttributes } from './base-component';
-import { MarkdownPostProcessorContext } from 'obsidian';
+import { BaseAttributes, BaseComponent, ComponentMetadata } from './base-component';
 import { StatAttributes } from './stats-component';
 import { getCodeBlock } from 'src/utilities';
-import { RollableComponent } from './rollable-component';
+import { Rollable } from './capabilities';
 
 export interface SkillAttributes extends BaseAttributes {
-	proficiency: Skill[];
-	expertise: Skill[];
+	proficiency: Skill[] | null;
+	expertise: Skill[] | null;
 }
 
-export class SkillsComponent implements RollableComponent {
+export class SkillsComponent extends BaseComponent<SkillAttributes> implements Rollable {
 
-	el: HTMLElement;
-	attributes: SkillAttributes;
-	skillModifiers: Map<Skill, number> = new Map();
-	statModifiers: Map<Ability, number> = new Map();
-	ctx: MarkdownPostProcessorContext;
+	static readonly metadata: ComponentMetadata = {
+		type: "skills",
+		policies: []
+	}
 
 	onRoll: (notation: string) => void;
 	setRollCallback(cb: (notation: string) => void): void {
 		this.onRoll = cb;
 	}
-	
-	constructor(
-		el: HTMLElement,
-		attributes: SkillAttributes,
-		ctx: MarkdownPostProcessorContext
-	) {
-		this.el = el;
-		this.attributes = attributes;
-		this.ctx = ctx;
-	}
+
+	skillModifiers: Map<Skill, number> = new Map();
+	statModifiers: Map<Ability, number> = new Map();
 
 	getSkillRoll(skill: Skill): string {
-		return `1d20+${this.skillModifiers.get(skill) ?? 0}`;
+		const mod = this.skillModifiers.get(skill) ?? 0;
+		if (mod > 0) return `1d20+${mod}`;
+		if (mod < 0) return `1d20${mod}`;
+		return `1d20`;
 	}
 
 	applyAbilityMods(statBlock: StatAttributes) {
 		ABILITIES.map((ability: Ability, i: number) => {
 			this.statModifiers.set(ability, getAbilityModifier(statBlock.stats[i]) ?? 0);
 		})
-	
 	}
 
 	async getAssociatedStats() {
@@ -66,13 +59,13 @@ export class SkillsComponent implements RollableComponent {
 
 			this.skillModifiers.set(skill, this.statModifiers.get(relevantStat) ?? 0)
 
-			if (this.attributes.expertise.some(
+			if (this.attributes.expertise?.some(
 				expertise => expertise.toLowerCase() == skill.toLowerCase()
 			)) {
 				this.skillModifiers.set(skill, (this.statModifiers.get(relevantStat) ?? 0) + 4)
 			}
 
-			if (this.attributes.proficiency.some(
+			if (this.attributes.proficiency?.some(
 				proficiency => proficiency.toLowerCase() == skill.toLowerCase()
 			)) {
 				this.skillModifiers.set(skill, (this.statModifiers.get(relevantStat) ?? 0) + 2)

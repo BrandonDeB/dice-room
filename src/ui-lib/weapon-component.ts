@@ -7,6 +7,11 @@ export interface WeaponAttributes extends AttackAttributes {
 
 export class WeaponComponent extends AttackComponent {	
 
+	static readonly metadata = {
+		type: "weapon",
+		policies: []
+	}
+
 	weaponType: string | undefined;
 
 	constructor(

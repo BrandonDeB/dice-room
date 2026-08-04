@@ -6,7 +6,7 @@ import { StatsComponent, StatAttributes } from "./ui-lib/stats-component";
 import { SkillsComponent, SkillAttributes } from "./ui-lib/skills-component";
 import { BaseComponent, BaseAttributes } from "./ui-lib/base-component";
 import { InventoryComponent, InventoryAttributes } from "./ui-lib/inventory";
-import { isRollable } from "./ui-lib/rollable-component";
+import { Rollable } from "./ui-lib/capabilities";
 
 const UITypes = {
 	WEAPON: "weapon",
@@ -17,19 +17,25 @@ const UITypes = {
 	INVENTORY: "inventory",
 }
 
+function isRollable(
+    component: BaseComponent<any>
+): component is BaseComponent<any> & Rollable {
+    return typeof (component as any).setRollCallback === "function";
+}
+
 export default class CodeBlock {
 
 	source: string;
 	el: HTMLElement;
 	ctx: MarkdownPostProcessorContext;
-	component: BaseComponent;
+	component: BaseComponent<BaseAttributes>;
 	onRoll: (notation: string) => void;
 
 	constructor(
 		source: string,
 		el: HTMLElement,
 		ctx: MarkdownPostProcessorContext,
-		onRoll: (notation: string) => void,	
+		onRoll: (notation: string) => void,
 	) {
 		this.source = source;
 		this.el = el;
@@ -70,8 +76,8 @@ export default class CodeBlock {
 				const skillsData = yamlParse(this.source) as SkillAttributes;
 				this.component = new SkillsComponent(
 					this.el,
-					skillsData,
-					this.ctx
+					this.ctx,
+					skillsData
 				)
 			break;
 			case UITypes.INVENTORY:
@@ -85,6 +91,7 @@ export default class CodeBlock {
 			default:
 			return;
 		}
+
 		if (isRollable(this.component)) {
 			this.component.setRollCallback(this.onRoll);
 		}
