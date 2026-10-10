@@ -2,6 +2,7 @@ import { ABILITIES, SKILLS, Skill, Ability, getAbilityModifier, SKILLABILITY} fr
 import { BaseAttributes, BaseComponent, ComponentMetadata } from './base-component';
 import { StatAttributes } from './stats-component';
 import { getCodeBlock } from 'src/utilities';
+import { MarkdownPostProcessorContext } from 'obsidian';
 import { Rollable } from './capabilities';
 
 export interface SkillAttributes extends BaseAttributes {
@@ -47,14 +48,14 @@ export class SkillsComponent extends BaseComponent<SkillAttributes> implements R
 
 	}
 
-	async render() {
-		await this.getAssociatedStats();
+	render() {
+		this.getAssociatedStats();
 
-		const container = this.el.createDiv({cls: 'skill-full-container'});
+		const container = this.containerEl.createDiv({cls: 'skill-full-container'});
 		SKILLS.map((skill: Skill, i: number) => {
 
 			const capsule = container.createDiv({cls: 'skill-container'});
-			capsule.createEl('h3', {text: skill});
+			capsule.createEl('h4', {text: skill});
 			const relevantStat = SKILLABILITY[skill];
 
 			this.skillModifiers.set(skill, this.statModifiers.get(relevantStat) ?? 0)

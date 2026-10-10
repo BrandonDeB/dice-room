@@ -1,5 +1,5 @@
-import { MarkdownPostProcessorContext } from "obsidian";
-import { Rollable } from "./capabilities";
+import { MarkdownPostProcessorContext, MarkdownRenderChild } from "obsidian";
+import { Persistable, Rollable } from "./capabilities";
 
 export interface BaseAttributes {
 	type: string;
@@ -7,6 +7,7 @@ export interface BaseAttributes {
 
 export interface TraitMap {
 	rollable: Rollable
+	persistable: Persistable
 }
 
 export type Trait = keyof TraitMap;
@@ -18,21 +19,21 @@ export interface ComponentMetadata {
 	policies: readonly Policy[] | null;
 }
 
-export abstract class BaseComponent<T extends BaseAttributes> {
+export abstract class BaseComponent<T extends BaseAttributes> extends MarkdownRenderChild {
 
 	static readonly metadata: ComponentMetadata;
 
 	constructor(
-		protected readonly el: HTMLElement,
+		el: HTMLElement,
 		protected readonly ctx: MarkdownPostProcessorContext,
 		protected readonly attributes: T,
 	) {
-		this.el = el;
-		this.ctx = ctx;
-		this.attributes = attributes;
+		super(el);
 	}
 
 	abstract render(): void;
+
+	onload() {this.render();}
 
 }
 
@@ -51,7 +52,8 @@ export class ComponentFactory {
 	private static registry = new Map<string, ComponentConstructor>();
 
 	static register(component: ComponentConstructor) {
-		this.registry.set(component.metadata.type, component);
+		const type = component.metadata.type.toLowerCase().trim();
+		this.registry.set(type, component);
 	}
 
 	static checkPolicies(metadata: ComponentMetadata, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
@@ -64,12 +66,13 @@ export class ComponentFactory {
 		ctx: MarkdownPostProcessorContext,
 		attributes: BaseAttributes
 	) {
-		const Component = this.registry.get(attributes.type);
+		const Component = this.registry.get(attributes.type.toLowerCase().trim());
 
 		if (!Component) return null;
 
 		const comp = new Component(el, ctx, attributes)
 		this.checkPolicies(Component.metadata, el, ctx);
-		comp.render();
+
+		return comp;
 	}
 }

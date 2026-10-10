@@ -1,26 +1,19 @@
-import { MarkdownPostProcessorContext } from "obsidian";
-import { parse as yamlParse } from "yaml";
-import { WeaponComponent, WeaponAttributes } from "./ui-lib/weapon-component";
-import { SpellComponent, SpellAttributes } from "./ui-lib/spell-component";
-import { StatsComponent, StatAttributes } from "./ui-lib/stats-component";
-import { SkillsComponent, SkillAttributes } from "./ui-lib/skills-component";
-import { BaseComponent, BaseAttributes } from "./ui-lib/base-component";
-import { InventoryComponent, InventoryAttributes } from "./ui-lib/inventory";
-import { Rollable } from "./ui-lib/capabilities";
-
-const UITypes = {
-	WEAPON: "weapon",
-	CHARACTER: "character",
-	SPELL: "spell",
-	STATS: "stats",
-	SKILLS: "skills",
-	INVENTORY: "inventory",
-}
+import { MarkdownPostProcessorContext, TFile } from "obsidian";
+import { parse as yamlParse, parseDocument } from "yaml";
+import { BaseComponent, BaseAttributes, ComponentFactory } from "./ui-lib/base-component";
+import { Persistable, Rollable, YamlStep } from "./ui-lib/capabilities";
+import { getApp } from "./app-provider";
 
 function isRollable(
     component: BaseComponent<any>
 ): component is BaseComponent<any> & Rollable {
     return typeof (component as any).setRollCallback === "function";
+}
+
+function isPersistable(
+	component: BaseComponent<any>
+): component is BaseComponent<any> & Persistable {
+	return typeof (component as any).setPersistCallback === "function";
 }
 
 export default class CodeBlock {
@@ -43,58 +36,61 @@ export default class CodeBlock {
 		this.onRoll = onRoll;
 	}
 
+	private applySteps = async (steps: YamlStep[]) => {
+		if (steps.length === 0) return;
+
+		const app = getApp();
+
+		const file = app.vault.getAbstractFileByPath(this.ctx.sourcePath);
+		if (!(file instanceof TFile)) return;
+
+		const section = this.ctx.getSectionInfo(this.el);
+		if (!section) return;
+
+		const { lineStart, lineEnd } = section;
+
+		await app.vault.process(file, (data) => {
+			const lines = data.split('\n');
+
+			if (!lines[lineStart]?.startsWith('```dicelist')) return data;
+
+			const doc = parseDocument(lines.slice(lineStart + 1, lineEnd).join('\n'));
+
+			for (const step of steps) {
+				switch (step.op) {
+					case 'set': doc.setIn(step.path, step.value); break;
+					case 'delete': doc.deleteIn(step.path); break;
+					case 'add': doc.addIn(step.path, step.value); break;
+				}
+			}
+
+			lines.splice(
+				lineStart + 1,
+				lineEnd - lineStart - 1,
+				...doc.toString().trimEnd().split('\n')
+			);
+
+			return lines.join('\n');
+		});
+	}
+
 	initialize() {
 		const componentData = yamlParse(this.source) as BaseAttributes;
 		if (!componentData?.type) return;
-		const uiType = componentData.type.toLowerCase().trim();
-		switch (uiType) {
-			case UITypes.WEAPON:
-				const weaponData = yamlParse(this.source) as WeaponAttributes;
-				this.component = new WeaponComponent(
-					this.el,
-					this.ctx,
-					weaponData,
-				);
-			break;
-			case UITypes.SPELL:
-				const spellData = yamlParse(this.source) as SpellAttributes;
-				this.component = new SpellComponent(
-					this.el,
-					this.ctx,
-					spellData,
-				);
-			break;
-			case UITypes.STATS:
-				const statData = yamlParse(this.source) as StatAttributes;
-				this.component = new StatsComponent(
-					this.el,
-					this.ctx,
-					statData,
-				);
-			break;
-			case UITypes.SKILLS:
-				const skillsData = yamlParse(this.source) as SkillAttributes;
-				this.component = new SkillsComponent(
-					this.el,
-					this.ctx,
-					skillsData
-				)
-			break;
-			case UITypes.INVENTORY:
-				const invData = yamlParse(this.source) as InventoryAttributes;
-				this.component = new InventoryComponent(
-					this.el,
-					this.ctx,
-					invData,
-				)
-			break;
-			default:
-			return;
-		}
+
+		const component = ComponentFactory.create(this.el, this.ctx, componentData);
+		if (!component) return;
+
+		this.component = component;
 
 		if (isRollable(this.component)) {
 			this.component.setRollCallback(this.onRoll);
 		}
-		this.component.render();
+
+		if (isPersistable(this.component)) {
+			this.component.setPersistCallback(this.applySteps);
+		}
+
+		this.ctx.addChild(this.component);
 	}
 }

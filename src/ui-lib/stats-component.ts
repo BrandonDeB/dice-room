@@ -28,7 +28,7 @@ export class StatsComponent extends BaseComponent<StatAttributes> implements Rol
 	}
 
 	render() {
-		const container = this.el.createDiv({cls: 'ability-full-container'})
+		const container = this.containerEl.createDiv({cls: 'ability-full-container'})
 		ABILITIES.map((ability: string, i: number) => {
 			const capsule = container.createDiv({cls: 'ability-container'});
 			capsule.createEl('h4', {text: ability.substring(0, 3)});

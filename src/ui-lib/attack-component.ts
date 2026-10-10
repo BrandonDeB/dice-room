@@ -22,7 +22,6 @@ export abstract class AttackComponent extends BaseComponent<AttackAttributes> im
 	picture: string | undefined;
 	range: string | undefined;
 	app: App; 
-	sourcePath: string;
 	container: HTMLDivElement;
 	onRoll: (notation: string) => void;
 	setRollCallback(cb: (notation: string) => void): void {
@@ -34,8 +33,7 @@ export abstract class AttackComponent extends BaseComponent<AttackAttributes> im
 		this.damageRoll = new DiceNotation(this.attributes.damageRoll);
 
 		this.app = getApp();
-		this.container = this.el.createDiv({cls: 'component-container'});
-		this.container = this.el.createDiv({cls: 'component-container'});
+		this.container = this.containerEl.createDiv({cls: 'component-container'});
 		if (this.attributes.name) {
 			this.container.createEl('h3', {text: this.attributes.name});
 		}
@@ -84,5 +82,4 @@ export abstract class AttackComponent extends BaseComponent<AttackAttributes> im
 
 	}
 
-	abstract render(): void;
 }

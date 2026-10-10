@@ -10,18 +10,27 @@ If your plugin does not need CSS, delete this file.
 /* Skills Components */
 .skill-full-container {
     display: grid;
-    grid-template-columns: repeat(2, 1fr); /* two columns */
-    gap: 0.5rem;
+    grid-template-columns: repeat(2, 1fr);
+	/* one background paints every line: gaps show through as the interior
+	   lines, padding as the perimeter - so all of them match exactly */
+	gap: 2px;
+	padding: 2px;
+	background: rgba(255, 255, 255, 0.4);
+	border-radius: 2px;
 	cursor: pointer;
 }
 
 .skill-container {
     display: flex;
-    align-items: space-between;
-    gap: 0.5rem;
+    align-items: center;
+	justify-content: space-between;
+	gap: 0.5rem;
+	background: var(--background-primary); /* must be opaque to mask the lines */
+	cursor: pointer;
+	padding: 0.5rem;
 }
 
-.skill-container h3,
+.skill-container h4,
 .skill-container p {
     margin: 0;
 }
@@ -32,26 +41,38 @@ If your plugin does not need CSS, delete this file.
 	gap: 8px;
 }
 
+/* Inventory Components */
+.inv-container {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.5rem;
+}
+
 /* Abilities Components */
 .ability-full-container {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	/* same single-background trick as .skill-full-container */
+	gap: 2px;
 	width: 100%;
-	padding: 2px
+	padding: 2px;
+	background: rgba(255, 255, 255, 0.4);
+	border-radius: 2px;
 }
 
 .ability-container {
 	align-items: center;
 	text-align: center;
 	flex: 1;
-	outline: 2px solid rgba(256, 256, 256, 0.4);
 	border-radius: 2px;
+	background: var(--background-primary);
 	cursor: pointer;
 }
 
 .component-container {
-	border: 2px solid rgba(256, 256, 256, 0.4);
+	border: 2px solid rgba(255, 255, 255, 0.4);
 	padding: 9px;
 }
 
@@ -131,7 +152,7 @@ If your plugin does not need CSS, delete this file.
 .preview-roller {
 	height: 40%;
 	width: 100%;
-	outline: 2px solid rgba(256, 256, 256, 0.4);
+	outline: 2px solid rgba(255, 255, 255, 0.4);
 	border-radius: 2px;
 	position: relative;
 }
@@ -139,7 +160,7 @@ If your plugin does not need CSS, delete this file.
 .single-roller {
 	height: 40vh;
 	width: 95%;
-	outline: 2px solid rgba(256, 256, 256, 0.4);
+	outline: 2px solid rgba(255, 255, 255, 0.4);
 	border-radius: 2px;
 	margin: 1rem;
 	position: relative;

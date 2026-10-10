@@ -1,5 +1,6 @@
-import { MarkdownPostProcessorContext } from 'obsidian';
-import { BaseAttributes, BaseComponent} from './base-component';
+import { Notice, TextComponent } from 'obsidian';
+import { BaseAttributes, BaseComponent, ComponentMetadata} from './base-component';
+import { Persistable, YamlStep } from './capabilities';
 
 type InventoryItem = {
 	name: string;
@@ -10,37 +11,70 @@ export interface InventoryAttributes extends BaseAttributes {
 	items: InventoryItem[];
 }
 
-function invListToMap(items: InventoryItem[]): Map<string, number> {
-	const map = new Map<string, number>();
-	items.map((invItem) => {
-		map.set(invItem.name, invItem.quantity);
-	})
-	return map;
-}
 
-export class InventoryComponent extends BaseComponent<InventoryAttributes> {
+export class InventoryComponent extends BaseComponent<InventoryAttributes> implements Persistable {
 
-	readonly metadata = {
+	static readonly metadata: ComponentMetadata = {
 		type: "inventory",
-		singleton: true,
-		rollable: false
+		policies: ["unique"]
 	}
 
-	el: HTMLElement;
-	ctx: MarkdownPostProcessorContext;
-	attributes: InventoryAttributes;
-	invMap: Map<string, number>;
+	onPersist: (steps: YamlStep[]) => Promise<void>;
+	setPersistCallback(cb: (steps: YamlStep[]) => Promise<void>): void {
+		this.onPersist = cb;
+	}
 
+	private pending = new Set<number>();
+
+	warnOnDuplicateNames(items: InventoryItem[]) {
+		const seen = new Set<string>();
+		for (const item of items) {
+			if (seen.has(item.name)) {
+				new Notice('Item names must be unique');
+			}
+			seen.add(item.name);
+		}
+	}
+
+	private updateQuantity = (index: number) => (inputString: string) => {
+		const asNum = parseInt(inputString, 10);
+		if (Number.isNaN(asNum)) return;
+		if (this.attributes.items[index].quantity === asNum) return;
+
+		this.attributes.items[index].quantity = asNum;
+		this.pending.add(index);
+	}
+
+	private commitQuantity = (index: number) => () => {
+		if (!this.pending.delete(index)) return;
+
+		void this.onPersist([{
+			op: 'set',
+			path: ['items', index, 'quantity'],
+			value: this.attributes.items[index].quantity,
+		}]);
+	}
 
 	render() {
 
-		this.invMap = invListToMap(this.attributes.items);
-		
-		const container = this.el.createDiv({cls: 'inventory-container'});
-		for(const [name, quantity] of this.invMap) {
-			container.createEl('h4', {text: name});
-			container.createEl('h4', {text: quantity.toString()});
-		}
+		this.warnOnDuplicateNames(this.attributes.items);
+
+		this.attributes.items.forEach((item, index) => {
+			const container = this.containerEl.createDiv({cls: 'inv-container'});
+			container.createEl('h4', {
+				text: item.name,
+				cls: 'inv-item-name'
+			});
+
+			const quantityEl = new TextComponent(container);
+			quantityEl.setValue(item.quantity.toString());
+			quantityEl.onChange(this.updateQuantity(index));
+
+			this.registerDomEvent(quantityEl.inputEl, 'blur', this.commitQuantity(index));
+			this.registerDomEvent(quantityEl.inputEl, 'keydown', (ev) => {
+				if (ev.key === 'Enter') quantityEl.inputEl.blur();
+			});
+		});
 	}
 
 }

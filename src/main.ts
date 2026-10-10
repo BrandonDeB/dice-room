@@ -3,6 +3,7 @@ import { DiceView, VIEW_TYPE_DICE } from './view';
 import { DiceRoomPluginSettings, DiceRollSettingTab, DEFAULT_SETTINGS } from './settings';
 import { setApp } from './app-provider';
 import CodeBlock from './codeblock';
+import { registerComponents } from './ui-lib/register';
 
 export default class DiceRoomPlugin extends Plugin {
 	settings: DiceRoomPluginSettings;
@@ -30,6 +31,8 @@ export default class DiceRoomPlugin extends Plugin {
 		});
 
 		this.addSettingTab(new DiceRollSettingTab(this.app, this));
+
+		registerComponents();
 
 		this.registerMarkdownCodeBlockProcessor('dicelist', (source, el, ctx) => {
 			const onRoll = (notation: string) => {
