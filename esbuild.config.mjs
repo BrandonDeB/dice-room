@@ -2,6 +2,7 @@ import esbuild from "esbuild";
 import process from "process";
 import builtins from "builtin-modules";
 import path from "path";
+import fs from "fs";
 
 const banner =
 `/*
@@ -11,6 +12,32 @@ if you want to view the source, please visit the github repository of this plugi
 `;
 
 const prod = (process.argv[2] === "production");
+
+// In dev mode, copy the built plugin into the local test vault (if it exists)
+// so the Hot Reload plugin there picks up every change.
+const TEST_VAULT = "test-vault";
+const TEST_PLUGIN_DIR = path.join(TEST_VAULT, ".obsidian", "plugins", "dice-room");
+const PLUGIN_FILES = ["main.js", "manifest.json", "styles.css"];
+
+function syncToTestVault() {
+	if (prod || !fs.existsSync(TEST_VAULT)) return;
+	fs.mkdirSync(TEST_PLUGIN_DIR, { recursive: true });
+	// Tells Hot Reload to watch this plugin.
+	fs.writeFileSync(path.join(TEST_PLUGIN_DIR, ".hotreload"), "");
+	for (const file of PLUGIN_FILES) {
+		if (fs.existsSync(file)) fs.copyFileSync(file, path.join(TEST_PLUGIN_DIR, file));
+	}
+	console.log(`[test-vault] synced plugin to ${TEST_PLUGIN_DIR}`);
+}
+
+const syncPlugin = {
+	name: "sync-test-vault",
+	setup(build) {
+		build.onEnd((result) => {
+			if (result.errors.length === 0) syncToTestVault();
+		});
+	},
+};
 
 const context = await esbuild.context({
 	banner: {
@@ -40,6 +67,7 @@ const context = await esbuild.context({
 	treeShaking: true,
 	outfile: "main.js",
 	minify: prod,
+	plugins: [syncPlugin],
 });
 
 if (prod) {
@@ -47,4 +75,13 @@ if (prod) {
 	process.exit(0);
 } else {
 	await context.watch();
+
+	// styles.css and manifest.json are not part of the bundle, so watch them separately.
+	let pending = null;
+	for (const file of ["styles.css", "manifest.json"]) {
+		fs.watch(file, () => {
+			clearTimeout(pending);
+			pending = setTimeout(syncToTestVault, 100);
+		});
+	}
 }

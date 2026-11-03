@@ -1,8 +1,7 @@
 import { ABILITIES, SKILLS, Skill, Ability, getAbilityModifier, SKILLABILITY} from 'src/abilites';
 import { BaseAttributes, BaseComponent, ComponentMetadata } from './base-component';
 import { StatAttributes } from './stats-component';
-import { getCodeBlock } from 'src/utilities';
-import { MarkdownPostProcessorContext } from 'obsidian';
+import { describeLookupProblem, findUniqueBlock } from 'src/character';
 import { Rollable } from './capabilities';
 import { Roll } from '../roll';
 import { DiceNotation } from './ui-types';
@@ -40,18 +39,23 @@ export class SkillsComponent extends BaseComponent<SkillAttributes> implements R
 		})
 	}
 
-	async getAssociatedStats() {
-		const codeBlock = await getCodeBlock<StatAttributes>('stats', this.ctx);
-		if (!codeBlock) {
-			console.warn("No character associated stat block found");
-			return;
+	/** Load stat modifiers. Returns a warning to show if they could not be used. */
+	async getAssociatedStats(): Promise<string | null> {
+		const lookup = await findUniqueBlock<StatAttributes>(this.ctx, 'stats');
+		if (lookup.status === 'found') {
+			this.applyAbilityMods(lookup.match.data);
+			return null;
 		}
-		this.applyAbilityMods(codeBlock);
-
+		return `${describeLookupProblem('stats', lookup)}. Skill bonuses do not include ability modifiers.`;
 	}
 
 	render() {
-		this.getAssociatedStats();
+		void this.renderWithStats();
+	}
+
+	private async renderWithStats() {
+		const warning = await this.getAssociatedStats();
+		if (warning) this.containerEl.createDiv({ cls: 'dicelist-error', text: warning });
 
 		const container = this.containerEl.createDiv({cls: 'skill-full-container'});
 		SKILLS.map((skill: Skill, i: number) => {

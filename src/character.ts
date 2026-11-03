@@ -6,15 +6,30 @@ import { ComponentFactory } from "./ui-lib/base-component";
 import { ActionArgs, ActionError, applyYamlSteps } from "./ui-lib/actions";
 import { YamlStep } from "./ui-lib/capabilities";
 
-interface BlockLocation {
+export interface BlockLocation {
 	/** Line of the opening ```dicelist fence. */
 	lineStart: number;
 	/** Line of the closing ``` fence. */
 	lineEnd: number;
 	type: string;
+	/** The block's parsed YAML. */
+	data: Record<string, unknown>;
 }
 
-function normalizeType(type: string) {
+/** A dicelist block found in one of the character's notes. */
+export interface BlockMatch<T = Record<string, unknown>> {
+	file: TFile;
+	location: BlockLocation;
+	data: T;
+}
+
+/** Result of looking for a component that should exist once per character. */
+export type UniqueLookup<T = Record<string, unknown>> =
+	| { status: 'found'; match: BlockMatch<T> }
+	| { status: 'missing' }
+	| { status: 'duplicate'; matches: BlockMatch<T>[] };
+
+export function normalizeType(type: string) {
 	return type.toLowerCase().trim();
 }
 
@@ -26,7 +41,7 @@ function readBlock(lines: string[], lineStart: number, lineEnd: number): BlockLo
 	try {
 		const data = yamlParse(lines.slice(lineStart + 1, lineEnd).join('\n'));
 		if (data && typeof data.type === 'string') {
-			return { lineStart, lineEnd, type: normalizeType(data.type) };
+			return { lineStart, lineEnd, type: normalizeType(data.type), data };
 		}
 	} catch {
 		// Malformed YAML: not a valid target.
@@ -65,35 +80,65 @@ function cachedCodeRanges(file: TFile): { start: number; end: number }[] | null 
 		.map(section => ({ start: section.position.start.line, end: section.position.end.line }));
 }
 
-interface Target {
-	file: TFile;
-	/** Where the block was when found; re-checked before editing. */
-	hint: BlockLocation;
+function isFenceLine(line: string | undefined): boolean {
+	const trimmed = line?.trim() ?? '';
+	return trimmed.startsWith('```') || trimmed.startsWith('~~~');
 }
 
-async function findTarget(ctx: MarkdownPostProcessorContext, type: string): Promise<Target> {
-	const app = getApp();
-	const files = getCharacterFiles(ctx) ?? [];
+/** All dicelist blocks in one note, using cached positions when they still line up. */
+async function blocksInFile(file: TFile): Promise<BlockLocation[]> {
+	const ranges = cachedCodeRanges(file);
+	// Indexed note with no code blocks: skip it without reading.
+	if (ranges && ranges.length === 0) return [];
 
-	const matches: Target[] = [];
-	for (const file of files) {
-		const ranges = cachedCodeRanges(file);
-		// Indexed note with no code blocks: skip it without reading.
-		if (ranges && ranges.length === 0) continue;
+	const lines = (await getApp().vault.cachedRead(file)).split('\n');
 
-		const lines = (await app.vault.cachedRead(file)).split('\n');
-		const blocks = ranges
-			? ranges.map(r => readBlock(lines, r.start, r.end)).filter((b): b is BlockLocation => b !== null)
-			: findBlocks(lines);
+	// If the cache is behind the file, its line numbers will not land on fences.
+	if (!ranges || !ranges.every(r => isFenceLine(lines[r.start]) && isFenceLine(lines[r.end]))) {
+		return findBlocks(lines);
+	}
+	return ranges
+		.map(r => readBlock(lines, r.start, r.end))
+		.filter((b): b is BlockLocation => b !== null);
+}
 
-		for (const block of blocks) {
-			if (block.type === type) matches.push({ file, hint: block });
+/** Every block of a type across the character's notes. */
+export async function findBlocksOfType<T = Record<string, unknown>>(
+	ctx: MarkdownPostProcessorContext,
+	type: string,
+): Promise<BlockMatch<T>[]> {
+	const wanted = normalizeType(type);
+	const matches: BlockMatch<T>[] = [];
+
+	for (const file of getCharacterFiles(ctx) ?? []) {
+		for (const location of await blocksInFile(file)) {
+			if (location.type === wanted) {
+				matches.push({ file, location, data: location.data as T });
+			}
 		}
 	}
+	return matches;
+}
 
-	if (matches.length === 0) throw new ActionError(`No ${type} found for this character`);
-	if (matches.length > 1) throw new ActionError(`This character has more than one ${type}`);
-	return matches[0];
+/** Look up a component that should appear exactly once for this character. */
+export async function findUniqueBlock<T = Record<string, unknown>>(
+	ctx: MarkdownPostProcessorContext,
+	type: string,
+): Promise<UniqueLookup<T>> {
+	const matches = await findBlocksOfType<T>(ctx, type);
+	if (matches.length === 0) return { status: 'missing' };
+	if (matches.length > 1) return { status: 'duplicate', matches };
+	return { status: 'found', match: matches[0] };
+}
+
+/** A user-facing explanation for a failed unique lookup. */
+export function describeLookupProblem(type: string, lookup: UniqueLookup<unknown>): string {
+	if (lookup.status === 'missing') return `No ${type} found for this character`;
+	if (lookup.status === 'duplicate') {
+		const notes = [...new Set(lookup.matches.map(m => m.file.basename))].join(', ');
+		return `This character has ${lookup.matches.length} ${type} blocks (in ${notes}). Keep only one.`;
+	}
+	return '';
 }
 
 /**
@@ -112,7 +157,9 @@ export async function invokeAction(
 	const handler = ComponentFactory.getMetadata(type)?.actions?.[action];
 	if (!handler) throw new ActionError(`"${targetType}" has no action named "${action}"`);
 
-	const { file, hint } = await findTarget(ctx, type);
+	const lookup = await findUniqueBlock(ctx, type);
+	if (lookup.status !== 'found') throw new ActionError(describeLookupProblem(type, lookup));
+	const { file, location: hint } = lookup.match;
 
 	// Errors thrown inside vault.process are captured and re-thrown after,
 	// so a rejected action leaves the file untouched.

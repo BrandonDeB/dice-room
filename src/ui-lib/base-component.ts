@@ -62,11 +62,6 @@ export class ComponentFactory {
 		return this.registry.get(type.toLowerCase().trim())?.metadata;
 	}
 
-	static checkPolicies(metadata: ComponentMetadata, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
-		// TO-DO implement checking for each policy
-		return true
-	}
-
 	static create(
 		el: HTMLElement,
 		ctx: MarkdownPostProcessorContext,
@@ -76,9 +71,6 @@ export class ComponentFactory {
 
 		if (!Component) return null;
 
-		const comp = new Component(el, ctx, attributes)
-		this.checkPolicies(Component.metadata, el, ctx);
-
-		return comp;
+		return new Component(el, ctx, attributes);
 	}
 }

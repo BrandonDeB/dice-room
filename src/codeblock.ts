@@ -5,6 +5,7 @@ import { Persistable, Rollable, YamlStep } from "./ui-lib/capabilities";
 import { getApp } from "./app-provider";
 import { applyYamlSteps } from "./ui-lib/actions";
 import { DiceRoller, performRoll } from "./roll";
+import { PolicyViolation, checkPolicies } from "./ui-lib/policies";
 
 function isRollable(
     component: BaseComponent<any>
@@ -70,9 +71,48 @@ export default class CodeBlock {
 		});
 	}
 
-	initialize() {
+	/** Show why the component cannot be displayed, linking to each block involved. */
+	private renderViolations(violations: PolicyViolation[]) {
+		const app = getApp();
+		const here = this.ctx.getSectionInfo(this.el)?.lineStart;
+		const box = this.el.createDiv({ cls: 'dicelist-error' });
+
+		for (const violation of violations) {
+			box.createEl('p', { text: violation.message });
+			const list = box.createEl('ul');
+
+			for (const { file, location } of violation.blocks) {
+				const isThis = file.path === this.ctx.sourcePath && location.lineStart === here;
+				const item = list.createEl('li');
+				const link = item.createEl('a', {
+					text: `${file.basename}, line ${location.lineStart + 1}`,
+					cls: 'internal-link',
+					href: '#',
+				});
+				if (isThis) item.appendText(' (this block)');
+
+				link.addEventListener('click', (ev) => {
+					ev.preventDefault();
+					void app.workspace.openLinkText(file.path, this.ctx.sourcePath, false, {
+						eState: { line: location.lineStart },
+					});
+				});
+			}
+		}
+	}
+
+	async initialize() {
 		const componentData = yamlParse(this.source) as BaseAttributes;
 		if (!componentData?.type) return;
+
+		const metadata = ComponentFactory.getMetadata(componentData.type);
+		if (!metadata) return;
+
+		const violations = await checkPolicies(metadata, this.ctx);
+		if (violations.length > 0) {
+			this.renderViolations(violations);
+			return;
+		}
 
 		const component = ComponentFactory.create(this.el, this.ctx, componentData);
 		if (!component) return;

@@ -51,7 +51,7 @@ export default class DiceRoomPlugin extends Plugin {
 		};
 
 		this.registerMarkdownCodeBlockProcessor('dicelist', (source, el, ctx) => {
-			new CodeBlock(source, el, ctx, roller).initialize();
+			return new CodeBlock(source, el, ctx, roller).initialize();
 		});
 	}
 

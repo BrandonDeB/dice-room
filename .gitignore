@@ -24,3 +24,6 @@ data.json
 package-lock.json
 
 .obsidian
+
+# Local Obsidian vault for trying out the plugin (see docs/developers/test-vault.md)
+test-vault/

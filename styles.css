@@ -211,3 +211,15 @@ If your plugin does not need CSS, delete this file.
 	position: relative;
 	z-index: 2;
 }
+
+/* Shown in place of a component that breaks a policy, such as a duplicate inventory */
+.dicelist-error {
+	border: 2px solid var(--text-error);
+	border-radius: 4px;
+	padding: 8px 12px;
+	color: var(--text-error);
+}
+
+.dicelist-error ul {
+	margin: 4px 0 0;
+}
