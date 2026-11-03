@@ -1,6 +1,7 @@
 import { Notice, TextComponent } from 'obsidian';
 import { BaseAttributes, BaseComponent, ComponentMetadata} from './base-component';
 import { Persistable, YamlStep } from './capabilities';
+import { ActionError, ActionMap, optionalPositiveInt, requireString } from './actions';
 
 type InventoryItem = {
 	name: string;
@@ -12,11 +13,48 @@ export interface InventoryAttributes extends BaseAttributes {
 }
 
 
+function findItem(items: InventoryItem[], name: string): number {
+	const wanted = name.toLowerCase();
+	return items.findIndex(item => item.name?.toLowerCase() === wanted);
+}
+
+const inventoryActions: ActionMap<InventoryAttributes> = {
+	/** args: item (name), quantity (default 1). Creates the item if missing. */
+	add: (attrs, args) => {
+		const name = requireString(args, 'item');
+		const quantity = optionalPositiveInt(args, 'quantity', 1);
+		const items = attrs.items ?? [];
+		const index = findItem(items, name);
+
+		if (index === -1) {
+			return Array.isArray(attrs.items)
+				? [{ op: 'add', path: ['items'], value: { name, quantity } }]
+				: [{ op: 'set', path: ['items'], value: [{ name, quantity }] }];
+		}
+		return [{ op: 'set', path: ['items', index, 'quantity'], value: items[index].quantity + quantity }];
+	},
+
+	/** args: item (name), quantity (default 1). Rejects if there are not enough. */
+	remove: (attrs, args) => {
+		const name = requireString(args, 'item');
+		const quantity = optionalPositiveInt(args, 'quantity', 1);
+		const items = attrs.items ?? [];
+		const index = findItem(items, name);
+
+		if (index === -1) throw new ActionError(`No ${name} in inventory`);
+		const have = items[index].quantity ?? 0;
+		if (have < quantity) throw new ActionError(`Not enough ${items[index].name}: have ${have}, need ${quantity}`);
+
+		return [{ op: 'set', path: ['items', index, 'quantity'], value: have - quantity }];
+	},
+};
+
 export class InventoryComponent extends BaseComponent<InventoryAttributes> implements Persistable {
 
 	static readonly metadata: ComponentMetadata = {
 		type: "inventory",
-		policies: ["unique"]
+		policies: ["unique"],
+		actions: inventoryActions,
 	}
 
 	onPersist: (steps: YamlStep[]) => Promise<void>;
@@ -57,6 +95,7 @@ export class InventoryComponent extends BaseComponent<InventoryAttributes> imple
 
 	render() {
 
+		this.attributes.items ??= [];
 		this.warnOnDuplicateNames(this.attributes.items);
 
 		this.attributes.items.forEach((item, index) => {

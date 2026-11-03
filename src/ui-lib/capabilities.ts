@@ -1,6 +1,8 @@
+import type { Roll } from "../roll";
+
 export interface Rollable {
-	onRoll(notation: string): void;
-	setRollCallback: (cb: (notation: string) => void) => void;
+	onRoll(roll: Roll): void;
+	setRollCallback: (cb: (roll: Roll) => void) => void;
 }
 
 export type YamlPath = (string | number)[];

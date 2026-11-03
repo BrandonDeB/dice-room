@@ -14,6 +14,7 @@ export class WeaponComponent extends AttackComponent {
 	weaponType: string | undefined;
 
 	render() {
+		super.renderBase();
 		// TODO implement something unique to weapons vs other attack types
 	}
 

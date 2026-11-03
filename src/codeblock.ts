@@ -3,6 +3,8 @@ import { parse as yamlParse, parseDocument } from "yaml";
 import { BaseComponent, BaseAttributes, ComponentFactory } from "./ui-lib/base-component";
 import { Persistable, Rollable, YamlStep } from "./ui-lib/capabilities";
 import { getApp } from "./app-provider";
+import { applyYamlSteps } from "./ui-lib/actions";
+import { DiceRoller, performRoll } from "./roll";
 
 function isRollable(
     component: BaseComponent<any>
@@ -22,18 +24,18 @@ export default class CodeBlock {
 	el: HTMLElement;
 	ctx: MarkdownPostProcessorContext;
 	component: BaseComponent<BaseAttributes>;
-	onRoll: (notation: string) => void;
+	roller: DiceRoller;
 
 	constructor(
 		source: string,
 		el: HTMLElement,
 		ctx: MarkdownPostProcessorContext,
-		onRoll: (notation: string) => void,
+		roller: DiceRoller,
 	) {
 		this.source = source;
 		this.el = el;
 		this.ctx = ctx;
-		this.onRoll = onRoll;
+		this.roller = roller;
 	}
 
 	private applySteps = async (steps: YamlStep[]) => {
@@ -56,13 +58,7 @@ export default class CodeBlock {
 
 			const doc = parseDocument(lines.slice(lineStart + 1, lineEnd).join('\n'));
 
-			for (const step of steps) {
-				switch (step.op) {
-					case 'set': doc.setIn(step.path, step.value); break;
-					case 'delete': doc.deleteIn(step.path); break;
-					case 'add': doc.addIn(step.path, step.value); break;
-				}
-			}
+			applyYamlSteps(doc, steps);
 
 			lines.splice(
 				lineStart + 1,
@@ -84,7 +80,9 @@ export default class CodeBlock {
 		this.component = component;
 
 		if (isRollable(this.component)) {
-			this.component.setRollCallback(this.onRoll);
+			this.component.setRollCallback((roll) => {
+				void performRoll(this.ctx, roll, this.roller);
+			});
 		}
 
 		if (isPersistable(this.component)) {

@@ -115,6 +115,13 @@ export class DiceView extends ItemView {
 		});
 	}
 
+	/** True if connected to a room. Otherwise tells the user to join one. */
+	public canRoll(): boolean {
+		if (this.ws && this.ws.readyState == WebSocket.OPEN) return true;
+		new Notice("Join a room to roll your dice!");
+		return false;
+	}
+
 	public rollDice(notation: string) {
 		const results = new DiceNotation(notation, true);
 		if (this.ws && this.ws.readyState == WebSocket.OPEN) {

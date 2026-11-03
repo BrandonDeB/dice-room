@@ -4,6 +4,7 @@ import { DiceRoomPluginSettings, DiceRollSettingTab, DEFAULT_SETTINGS } from './
 import { setApp } from './app-provider';
 import CodeBlock from './codeblock';
 import { registerComponents } from './ui-lib/register';
+import { DiceRoller } from './roll';
 
 export default class DiceRoomPlugin extends Plugin {
 	settings: DiceRoomPluginSettings;
@@ -34,15 +35,23 @@ export default class DiceRoomPlugin extends Plugin {
 
 		registerComponents();
 
-		this.registerMarkdownCodeBlockProcessor('dicelist', (source, el, ctx) => {
-			const onRoll = (notation: string) => {
-				const leaves =this.app.workspace.getLeavesOfType(VIEW_TYPE_DICE);
-				const view = leaves[0]?.view as DiceView | undefined;
-				if (view) view.rollDice(notation);
-				else new Notice("Open the Dice View first!");
-			};
+		const getDiceView = () =>
+			this.app.workspace.getLeavesOfType(VIEW_TYPE_DICE)[0]?.view as DiceView | undefined;
 
-			new CodeBlock(source, el, ctx, onRoll).initialize();
+		const roller: DiceRoller = {
+			ready: () => {
+				const view = getDiceView();
+				if (!view) {
+					new Notice("Open the Dice View first!");
+					return false;
+				}
+				return view.canRoll();
+			},
+			roll: (notation) => getDiceView()?.rollDice(notation),
+		};
+
+		this.registerMarkdownCodeBlockProcessor('dicelist', (source, el, ctx) => {
+			new CodeBlock(source, el, ctx, roller).initialize();
 		});
 	}
 

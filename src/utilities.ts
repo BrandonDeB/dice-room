@@ -14,7 +14,7 @@ export function getCharacterFiles(ctx: MarkdownPostProcessorContext): TFile[] | 
 
 	const currentFM = app.metadataCache.getFileCache(currentFile)?.frontmatter;
 
-	if (!currentFM) return [currentFile];
+	if (currentFM?.character == null) return [currentFile];
 
 	const characterFiles = app.vault.getMarkdownFiles().filter(file => {
 		const fm = app.metadataCache.getFileCache(file)?.frontmatter

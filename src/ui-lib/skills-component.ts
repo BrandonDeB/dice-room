@@ -4,6 +4,8 @@ import { StatAttributes } from './stats-component';
 import { getCodeBlock } from 'src/utilities';
 import { MarkdownPostProcessorContext } from 'obsidian';
 import { Rollable } from './capabilities';
+import { Roll } from '../roll';
+import { DiceNotation } from './ui-types';
 
 export interface SkillAttributes extends BaseAttributes {
 	proficiency: Skill[] | null;
@@ -17,8 +19,8 @@ export class SkillsComponent extends BaseComponent<SkillAttributes> implements R
 		policies: []
 	}
 
-	onRoll: (notation: string) => void;
-	setRollCallback(cb: (notation: string) => void): void {
+	onRoll: (roll: Roll) => void;
+	setRollCallback(cb: (roll: Roll) => void): void {
 		this.onRoll = cb;
 	}
 
@@ -73,7 +75,7 @@ export class SkillsComponent extends BaseComponent<SkillAttributes> implements R
 			}
 			capsule.createEl('p', {text: `(+${this.skillModifiers.get(skill) ?? 0})`})
 			capsule.addEventListener('click', () => {
-				this.onRoll(this.getSkillRoll(skill))
+				this.onRoll({ notation: new DiceNotation(this.getSkillRoll(skill)) })
 			})
 
 		})

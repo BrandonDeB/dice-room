@@ -1,6 +1,8 @@
 import { ABILITIES, Ability, getAbilityModifier } from 'src/abilites';
 import { BaseAttributes, BaseComponent, ComponentMetadata } from './base-component';
 import { Rollable } from './capabilities';
+import { Roll } from '../roll';
+import { DiceNotation } from './ui-types';
 
 export interface StatAttributes extends BaseAttributes {
 	stats: number[];
@@ -14,8 +16,8 @@ export class StatsComponent extends BaseComponent<StatAttributes> implements Rol
 		policies: ['unique']
 	}
 
-	onRoll: (notation: string) => void;
-	setRollCallback(cb: (notation: string) => void): void {
+	onRoll: (roll: Roll) => void;
+	setRollCallback(cb: (roll: Roll) => void): void {
 		this.onRoll = cb;
 	}
 
@@ -35,7 +37,7 @@ export class StatsComponent extends BaseComponent<StatAttributes> implements Rol
 			const statVal = this.attributes.stats[i]
 			capsule.createEl('p', {text: `${statVal.toString()} (+${getAbilityModifier(statVal).toString()})`})
 			capsule.addEventListener('click', () => {
-				this.onRoll(this.getStatRoll(i));
+				this.onRoll({ notation: new DiceNotation(this.getStatRoll(i)) });
 			})
 		})
 	}

@@ -1,5 +1,6 @@
 import { MarkdownPostProcessorContext, MarkdownRenderChild } from "obsidian";
 import { Persistable, Rollable } from "./capabilities";
+import { ActionMap } from "./actions";
 
 export interface BaseAttributes {
 	type: string;
@@ -17,6 +18,7 @@ export type Policy = "unique";
 export interface ComponentMetadata {
 	type: string;
 	policies: readonly Policy[] | null;
+	actions?: ActionMap;
 }
 
 export abstract class BaseComponent<T extends BaseAttributes> extends MarkdownRenderChild {
@@ -54,6 +56,10 @@ export class ComponentFactory {
 	static register(component: ComponentConstructor) {
 		const type = component.metadata.type.toLowerCase().trim();
 		this.registry.set(type, component);
+	}
+
+	static getMetadata(type: string): ComponentMetadata | undefined {
+		return this.registry.get(type.toLowerCase().trim())?.metadata;
 	}
 
 	static checkPolicies(metadata: ComponentMetadata, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
