@@ -178,71 +178,26 @@ If your plugin does not need CSS, delete this file.
 }
 
 /* Grids of native buttons for abilities and skills. */
+/* `layout: grid` on a card: rolls and values as tiles that fill the width. */
 .dicelist-roll-grid {
 	display: grid;
-	gap: var(--size-4-2);
-}
-
-/* All six abilities on one row, sharing the width equally. */
-.dicelist-abilities {
-	grid-template-columns: repeat(6, minmax(0, 1fr));
-}
-
-/* One ability: clicking the tile rolls a check; its Save button rolls the save. */
-.dicelist-ability {
-	display: flex;
-	flex-direction: column;
-	gap: var(--size-2-3);
-	min-width: 0;
-	padding: var(--size-4-2) var(--size-2-3);
-	border-radius: var(--radius-m);
-	background-color: var(--background-primary);
-	cursor: var(--cursor-link, pointer);
-}
-
-.dicelist-ability:hover {
-	background-color: var(--background-modifier-hover);
-}
-
-.dicelist-ability:focus-visible {
-	box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
-	outline: none;
-}
-
-.dicelist-ability-header {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	text-align: center;
-}
-
-.dicelist-ability .dicelist-roll-button {
-	justify-content: center;
-	gap: var(--size-2-2);
-	min-width: 0;
-	padding: var(--size-2-2) var(--size-2-3);
-	overflow: hidden;
-	white-space: nowrap;
-}
-
-/* A saving throw you are proficient in. */
-.dicelist-roll-button.is-proficient .dicelist-roll-button-value {
-	color: var(--text-accent);
-	font-weight: var(--font-semibold);
-}
-
-.dicelist-skills {
 	grid-template-columns: repeat(auto-fill, minmax(11em, 1fr));
+	gap: var(--size-4-2);
 }
 
 .dicelist-roll-button {
 	height: auto;
+	justify-content: space-between;
+	gap: var(--size-4-2);
 	padding: var(--size-4-2) var(--size-4-3);
 }
 
-.dicelist-skills .dicelist-roll-button {
-	justify-content: space-between;
-	gap: var(--size-4-2);
+/* A value's tile looks like a roll button, without being one. */
+.dicelist-value-tile {
+	display: flex;
+	align-items: center;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
 }
 
 .dicelist-roll-button-label {
