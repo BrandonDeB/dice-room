@@ -2,7 +2,6 @@ import { Setting } from 'obsidian';
 import { Modifier } from '../../modifiers';
 import { ActionError, ActionMap, optionalPositiveInt, requireString } from '../actions';
 import { CardComponent, ComponentView } from '../component';
-import { addSwitch } from '../native';
 import { ModifierFields, modifierFromFields } from './modifiers';
 
 interface InventoryItem {
@@ -117,8 +116,13 @@ function renderItem(view: ComponentView<Inventory>, item: InventoryItem, index: 
 
 	// Switches, like Equipped, come before the count.
 	for (const [name, on] of switchesOf(item)) {
-		addSwitch(row.controlEl, `${item.name} ${name.toLowerCase()}`, on,
-			value => void view.persist([{ op: 'set', path: [index, 'switches', name], value }]));
+		row.addToggle(toggle => {
+			toggle.toggleEl.setAttr('aria-label', `${item.name} ${name.toLowerCase()}`);
+			toggle
+				.setValue(on)
+				.setTooltip(name)
+				.onChange(value => void view.persist([{ op: 'set', path: [index, 'switches', name], value }]));
+		});
 	}
 
 	let pending: number | null = null;

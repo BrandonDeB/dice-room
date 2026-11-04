@@ -3,7 +3,7 @@ import { Modifier, nameList, normalizeName } from '../../modifiers';
 import { normalizeEventName } from '../../events';
 import { ActionError, ActionMap, ActionResult, requireString } from '../actions';
 import { CardComponent } from '../component';
-import { addSwitch, createCallout } from '../native';
+import { createCallout } from '../native';
 
 /** How a modifier is written in YAML: an entry of `modifiers`, or of an item's `modifiers`. */
 export interface ModifierFields {
@@ -127,13 +127,19 @@ export const modifiersComponent: CardComponent<ModifierFields[]> = {
 			}
 			const setting = new Setting(view.el)
 				.setName(name)
-				.setDesc(describeFields(fields, String(fields.value ?? '')));
-			addSwitch(setting.controlEl, `Turn ${name} on or off`, fields.active === true, active => {
-				fields.active = active;
-				view.guard(view.persist([{ op: 'set', path: [index, 'active'], value: active }]).then(() => {
-					if (active && fields.concentration === true) view.concentrateOn(name);
-				}));
-			});
+				.setDesc(describeFields(fields, String(fields.value ?? '')))
+				.addToggle(toggle => {
+					toggle.toggleEl.setAttr('aria-label', name);
+					toggle
+						.setValue(fields.active === true)
+						.setTooltip(`Turn ${name} on or off`)
+						.onChange(active => {
+							fields.active = active;
+							view.guard(view.persist([{ op: 'set', path: [index, 'active'], value: active }]).then(() => {
+								if (active && fields.concentration === true) view.concentrateOn(name);
+							}));
+						});
+				});
 			rows.push({ name, fields, setting });
 		});
 
