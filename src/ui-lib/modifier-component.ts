@@ -1,6 +1,6 @@
 import { BaseAttributes, BaseComponent, ComponentMetadata } from './base-component';
 import { Persistable, YamlStep } from './capabilities';
-import { ActionMap } from './actions';
+import { ActionMap, ActionResult } from './actions';
 import { Modifier } from '../modifiers';
 import { modifierFromFields, renderModifierSwitch } from './published-modifiers';
 import { createCard } from './native';
@@ -17,11 +17,20 @@ function toModifier(attrs: ModifierAttributes): Modifier[] {
 	return modifier ? [modifier] : [];
 }
 
-/** Turn the modifier on or off from a roll's effects. The target is chosen by `name`. */
+/**
+ * "Turns Bless on" as a preview, "Turned Bless on." once done. Previews get the
+ * would-be result as `after` too, so both read the new state from it.
+ */
+const describeSwitch = ({ after, args, applied }: ActionResult<ModifierAttributes>) => {
+	const name = typeof args.name === 'string' ? args.name : 'modifier';
+	const state = after.active === true ? 'on' : 'off';
+	return applied ? `Turned ${name} ${state}.` : `Turns ${name} ${state}`;
+};
+
 const modifierActions: ActionMap<ModifierAttributes> = {
-	on: () => [{ op: 'set', path: ['active'], value: true }],
-	off: () => [{ op: 'set', path: ['active'], value: false }],
-	toggle: (attrs) => [{ op: 'set', path: ['active'], value: attrs.active !== true }],
+	on: { run: () => [{ op: 'set', path: ['active'], value: true }], describe: describeSwitch },
+	off: { run: () => [{ op: 'set', path: ['active'], value: false }], describe: describeSwitch },
+	toggle: { run: (attrs) => [{ op: 'set', path: ['active'], value: attrs.active !== true }], describe: describeSwitch },
 };
 
 /**

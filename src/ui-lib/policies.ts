@@ -1,5 +1,5 @@
 import { MarkdownPostProcessorContext } from "obsidian";
-import { BlockMatch, describeLookupProblem, findUniqueBlock } from "../character";
+import { BlockMatch, describeLookupProblem, findBlocksOfType, findUniqueBlock } from "../character";
 import { BaseAttributes, ComponentMetadata, Policy } from "./base-component";
 import { findModifiers, normalizeName } from "../modifiers";
 
@@ -40,6 +40,29 @@ const POLICY_CHECKS: Record<Policy, PolicyCheck> = {
 			return {
 				message: `${sameName.length} modifiers are named "${sameName[0].name}" (in ${notes}). Rename or remove all but one.`,
 				blocks: sameName.map(m => ({ file: m.file, location: m.location, data: m.location.data })),
+			};
+		}
+		return null;
+	},
+
+	/** No two entries of this type (in any of the character's blocks) share a name. */
+	uniqueEntryNames: async (metadata, ctx, attributes) => {
+		const entryNames = metadata.entryNames;
+		if (!entryNames) return null;
+		const own = entryNames(attributes);
+		if (own.length === 0) return null;
+
+		const blocks = await findBlocksOfType(ctx, metadata.type);
+		for (const original of own) {
+			const name = normalizeName(original);
+			// Count every entry with this name, including repeats within one block.
+			const holders = blocks.flatMap(block =>
+				entryNames(block.data).filter(n => normalizeName(n) === name).map(() => block));
+			if (holders.length < 2) continue;
+			const label = (metadata.label ?? metadata.type).toLowerCase();
+			return {
+				message: `${holders.length} ${label} share the name "${original}". Rename or remove all but one.`,
+				blocks: [...new Set(holders)],
 			};
 		}
 		return null;

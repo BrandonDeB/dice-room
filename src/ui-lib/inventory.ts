@@ -16,6 +16,14 @@ export interface InventoryAttributes extends BaseAttributes {
 }
 
 
+/** The named item in this data, or null. */
+function itemIn(attrs: InventoryAttributes, name: unknown): InventoryItem | null {
+	if (typeof name !== 'string') return null;
+	const items = attrs?.items ?? [];
+	const index = findItem(items, name);
+	return index === -1 ? null : items[index];
+}
+
 function findItem(items: InventoryItem[], name: string): number {
 	const wanted = name.toLowerCase();
 	return items.findIndex(item => item.name?.toLowerCase() === wanted);
@@ -27,35 +35,53 @@ const inventoryActions: ActionMap<InventoryAttributes> = {
 	 * Creates the item if missing, with the description if one is given. An existing
 	 * item's description is left alone.
 	 */
-	add: (attrs, args) => {
-		const name = requireString(args, 'item');
-		const quantity = optionalPositiveInt(args, 'quantity', 1);
-		const items = attrs.items ?? [];
-		const index = findItem(items, name);
+	add: {
+		run: (attrs, args) => {
+			const name = requireString(args, 'item');
+			const quantity = optionalPositiveInt(args, 'quantity', 1);
+			const items = attrs.items ?? [];
+			const index = findItem(items, name);
 
-		if (index === -1) {
-			const description = typeof args.description === 'string' && args.description.trim() !== ''
-				? args.description.trim() : undefined;
-			const item: InventoryItem = description ? { name, quantity, description } : { name, quantity };
-			return Array.isArray(attrs.items)
-				? [{ op: 'add', path: ['items'], value: item }]
-				: [{ op: 'set', path: ['items'], value: [item] }];
-		}
-		return [{ op: 'set', path: ['items', index, 'quantity'], value: items[index].quantity + quantity }];
+			if (index === -1) {
+				const description = typeof args.description === 'string' && args.description.trim() !== ''
+					? args.description.trim() : undefined;
+				const item: InventoryItem = description ? { name, quantity, description } : { name, quantity };
+				return Array.isArray(attrs.items)
+					? [{ op: 'add', path: ['items'], value: item }]
+					: [{ op: 'set', path: ['items'], value: [item] }];
+			}
+			return [{ op: 'set', path: ['items', index, 'quantity'], value: items[index].quantity + quantity }];
+		},
+		describe: ({ before, after, args, applied }) => {
+			const item = itemIn(applied ? after : before, args.item);
+			const name = item?.name ?? String(args.item);
+			const amount = typeof args.quantity === 'number' ? args.quantity : 1;
+			const count = `${item?.quantity ?? 0} in inventory`;
+			return applied ? `Added ${amount} ${name}. ${count}.` : `Adds ${amount} ${name} (${count})`;
+		},
 	},
 
 	/** args: item (name), quantity (default 1). Rejects if there are not enough. */
-	remove: (attrs, args) => {
-		const name = requireString(args, 'item');
-		const quantity = optionalPositiveInt(args, 'quantity', 1);
-		const items = attrs.items ?? [];
-		const index = findItem(items, name);
+	remove: {
+		run: (attrs, args) => {
+			const name = requireString(args, 'item');
+			const quantity = optionalPositiveInt(args, 'quantity', 1);
+			const items = attrs.items ?? [];
+			const index = findItem(items, name);
 
-		if (index === -1) throw new ActionError(`No ${name} in inventory`);
-		const have = items[index].quantity ?? 0;
-		if (have < quantity) throw new ActionError(`Not enough ${items[index].name}: have ${have}, need ${quantity}`);
+			if (index === -1) throw new ActionError(`No ${name} in inventory`);
+			const have = items[index].quantity ?? 0;
+			if (have < quantity) throw new ActionError(`Not enough ${items[index].name}: have ${have}, need ${quantity}`);
 
-		return [{ op: 'set', path: ['items', index, 'quantity'], value: have - quantity }];
+			return [{ op: 'set', path: ['items', index, 'quantity'], value: have - quantity }];
+		},
+		describe: ({ before, after, args, applied }) => {
+			const item = itemIn(applied ? after : before, args.item);
+			const name = item?.name ?? String(args.item);
+			const amount = typeof args.quantity === 'number' ? args.quantity : 1;
+			const left = `${item?.quantity ?? 0} left`;
+			return applied ? `Used ${amount} of ${name}. ${left}.` : `Uses ${amount} of ${name} (${left})`;
+		},
 	},
 };
 

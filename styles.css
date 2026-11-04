@@ -261,3 +261,11 @@ If your plugin does not need CSS, delete this file.
 .dicelist-callout .callout-content ul {
 	margin: 0;
 }
+
+/* "3 of 4 left" between a consumable's use and restore buttons. */
+.dicelist-consumable-count {
+	min-width: 6.5em;
+	text-align: center;
+	color: var(--text-muted);
+	font-variant-numeric: tabular-nums;
+}

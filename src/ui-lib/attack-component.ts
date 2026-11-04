@@ -5,7 +5,7 @@ import { App, Setting } from "obsidian";
 import { Persistable, Rollable, YamlStep } from "./capabilities";
 import { renderPublishedSwitches } from "./published-modifiers";
 import { createBlockLink, createCard } from "./native";
-import { Roll, RollField, parseRoll } from "../roll";
+import { Roll, RollField, parseRoll, previewEffects } from "../roll";
 import { PublishedModifier, normalizeName, resolveRollModifiers } from "../modifiers";
 
 export interface AttackAttributes extends BaseAttributes {
@@ -45,37 +45,63 @@ export abstract class AttackComponent extends BaseComponent<AttackAttributes> im
 	}
 
 	/** Each roll's settings row, refreshed when modifiers change. */
-	private rollLines: { label: string; roll: Roll; setting: Setting }[] = [];
+	private rollLines: { label: string; roll: Roll; setting: Setting; buttonEl?: HTMLElement }[] = [];
 
 	/** A row for one roll: its total and modifiers on the left, a Roll button on the right. */
 	private addRollLine(parent: HTMLElement, label: string, roll: Roll) {
+		let buttonEl: HTMLElement | undefined;
 		const setting = new Setting(parent)
 			.setName(label)
 			.setDesc(roll.notation.toString())
-			.addButton(button => button
-				.setButtonText('Roll')
-				.setTooltip(`Roll ${label.toLowerCase()}`)
-				.onClick(() => this.onRoll(roll)));
-		this.rollLines.push({ label, roll, setting });
+			.addButton(button => {
+				buttonEl = button.buttonEl;
+				button
+					.setButtonText('Roll')
+					.setTooltip(`Roll ${label.toLowerCase()}`)
+					.onClick(() => this.onRoll(roll));
+			});
+		this.rollLines.push({ label, roll, setting, buttonEl });
 	}
 
-	/** Show each roll's dice with active modifiers included, or why it can't be rolled. */
-	private async refreshModifiers() {
+	/**
+	 * Show each roll's dice with active modifiers included, what its effects will do
+	 * ("Uses 1 of Arrows (2 left)"), or why it can't be rolled. Uses the same previews
+	 * that performRoll checks, so what's shown is what will happen.
+	 */
+	private async refreshRollInfo() {
 		for (const line of this.rollLines) {
 			const resolved = await resolveRollModifiers(this.ctx, line.roll);
+			const effects = await previewEffects(this.ctx, line.roll);
+			const problems = [
+				...resolved.problems,
+				...effects.map(effect => effect.problem).filter((problem): problem is string => !!problem),
+			];
+
+			// Out of what the effects need (no arrows, no spell slots): hide the Roll
+			// button until there's enough again. The reason shows in the description.
+			const cannotPay = effects.some(effect => effect.problem);
+			line.buttonEl?.toggle(!cannotPay);
+
 			const desc = line.setting.descEl;
 			desc.empty();
 			desc.createDiv({ text: resolved.notation });
-			if (resolved.problems.length > 0) {
-				desc.createDiv({ cls: 'roll-modifiers roll-problem', text: resolved.problems.join(' ') });
-			} else {
-				// "Includes Archery (+2)" and "Off: Bless (1d4)". Each name links to where
-				// the modifier is set, so it can be previewed and switched on from there.
-				this.renderModifierList(desc, 'Includes', resolved.applied, 'roll-modifiers');
-				this.renderModifierList(desc, 'Off:', resolved.inactive, 'roll-modifiers roll-modifiers-off');
+			if (problems.length > 0) {
+				desc.createDiv({ cls: 'roll-modifiers roll-problem', text: problems.join(' ') });
+				continue;
+			}
+			// "Includes Archery (+2)" and "Off: Bless (1d4)". Each name links to where
+			// the modifier is set, so it can be previewed and switched on from there.
+			this.renderModifierList(desc, 'Includes', resolved.applied, 'roll-modifiers');
+			this.renderModifierList(desc, 'Off:', resolved.inactive, 'roll-modifiers roll-modifiers-off');
+			// "Uses 1 of Arrows (2 left)", linking to the block it changes.
+			for (const effect of effects) {
+				if (!effect.message || !effect.target) continue;
+				const effectLine = desc.createDiv({ cls: 'roll-modifiers roll-effect' });
+				createBlockLink(effectLine, effect.message, effect.target, this.ctx.sourcePath, this);
 			}
 		}
 	}
+
 
 	/** One line listing modifiers, each name linking to where it is set. */
 	private renderModifierList(parent: HTMLElement, label: string, modifiers: PublishedModifier[], cls: string) {
@@ -135,8 +161,8 @@ export abstract class AttackComponent extends BaseComponent<AttackAttributes> im
 		if (hasDice(this.hitRoll)) this.addRollLine(this.container, 'Hit', this.hitRoll);
 		if (hasDice(this.damageRoll)) this.addRollLine(this.container, 'Damage', this.damageRoll);
 
-		this.guard(this.refreshModifiers());
-		this.onCharacterChange(() => this.guard(this.refreshModifiers()));
+		this.guard(this.refreshRollInfo());
+		this.onCharacterChange(() => this.guard(this.refreshRollInfo()));
 	}
 
 

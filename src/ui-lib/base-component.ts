@@ -19,18 +19,25 @@ export type Trait = keyof TraitMap;
 
 /**
  * "unique": at most one block of this type per character.
- * "uniqueModifierNames": every modifier this block publishes has a name no other
- * modifier of the character uses, whichever component publishes it.
+ * "uniqueModifierNames": no other modifier of the character shares a name with one
+ * this block publishes.
+ * "uniqueEntryNames": no other block of this type shares an entry name with this one
+ * (see `entryNames`), e.g. two consumables both called "Ki points".
  */
-export type Policy = "unique" | "uniqueModifierNames";
+export type Policy = "unique" | "uniqueModifierNames" | "uniqueEntryNames";
 
 export interface ComponentMetadata {
 	type: string;
-	/** What the component is called on its card, e.g. "Weapon" or "Ability scores". */
 	label?: string;
 	policies: readonly Policy[] | null;
 	actions?: ActionMap;
 	targetKey?: string;
+	/**
+	 * For types holding a list of named entries (like consumables): the names in a
+	 * block. Actions pick the block that holds the entry named by their `name`
+	 * argument, and the "uniqueEntryNames" policy keeps names unique per character.
+	 */
+	entryNames?: (attributes: any) => string[];
 	modifiers?: ModifierPublisher;
 }
 

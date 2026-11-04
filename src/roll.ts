@@ -1,5 +1,5 @@
 import { MarkdownPostProcessorContext, Notice } from "obsidian";
-import { invokeAction } from "./character";
+import { BlockTarget, invokeAction, previewAction } from "./character";
 import { ActionError, Effect } from "./ui-lib/actions";
 import { DiceNotation } from "./ui-lib/ui-types";
 import { nameList, resolveRollModifiers } from "./modifiers";
@@ -12,9 +12,7 @@ import { nameList, resolveRollModifiers } from "./modifiers";
 export interface Roll {
 	notation: DiceNotation;
 	effects?: Effect[];
-	/** Names of modifiers this roll subscribes to, e.g. ["Archery"]. */
 	modifiers?: string[];
-	/** Kinds of roll this is, e.g. ["attack", "weapon"]. Modifiers for these categories apply. */
 	categories?: string[];
 }
 
@@ -67,18 +65,50 @@ function isEffect(value: unknown): value is Effect {
 
 /** Where dice actually get thrown. Implemented by the plugin using the Dice view. */
 export interface DiceRoller {
-	/** False if rolling is not possible right now; should tell the user why. */
 	ready(): boolean;
 	roll(notation: string): void;
 }
 
+/** What one of a roll's effects would do, or why it can't. */
+export interface EffectPreview {
+	effect: Effect;
+	message?: string;
+	problem?: string;
+	target?: BlockTarget;
+}
+
+/** A user-facing message for anything an effect throws. */
+function effectError(effect: Effect, err: unknown): string {
+	if (err instanceof ActionError) return err.message;
+	console.error(err);
+	return `Could not run ${effect.action} on ${effect.target}`;
+}
+
 /**
- * Perform a roll for a component: work out its modifiers, run its effects in order,
- * then throw the dice with the modifiers added.
+ * Work out what each of a roll's effects would do, without changing anything.
+ * Rolls show this before they're made, and performRoll checks it before running.
+ */
+export async function previewEffects(ctx: MarkdownPostProcessorContext, roll: Roll): Promise<EffectPreview[]> {
+	const previews: EffectPreview[] = [];
+	for (const effect of roll.effects ?? []) {
+		try {
+			const preview = await previewAction(ctx, effect.target, effect.action, effect.args ?? {});
+			previews.push({ effect, message: preview.message, target: preview.target });
+		} catch (err) {
+			previews.push({ effect, problem: effectError(effect, err) });
+		}
+	}
+	return previews;
+}
+
+/**
+ * Perform a roll for a component: work out its modifiers, check and then run its
+ * effects, throw the dice with the modifiers added, and announce what the effects did
+ * ("Used 1 of Arrows. 1 left.").
  * Nothing happens if the roller is not ready, so ammo is not spent on a roll that
- * never lands. Modifier problems (a missing or duplicated modifier, a bad value)
- * stop the roll before any effects run. If an effect is rejected, the user is told
- * why and the dice are not thrown. Effects that already succeeded are not undone.
+ * never lands. Modifier problems, or any effect that would be rejected, stop the roll
+ * before any effect runs. If an effect still fails while running (the note changed in
+ * between), the user is told why and the dice are not thrown.
  */
 export async function performRoll(
 	ctx: MarkdownPostProcessorContext,
@@ -93,19 +123,26 @@ export async function performRoll(
 		return;
 	}
 
+	// Check every effect first, so a roll that would fail partway doesn't spend anything.
+	const problems = (await previewEffects(ctx, roll))
+		.map(preview => preview.problem)
+		.filter((problem): problem is string => !!problem);
+	if (problems.length > 0) {
+		new Notice(problems.join(' '));
+		return;
+	}
+
+	const announcements: string[] = [];
 	for (const effect of roll.effects ?? []) {
 		try {
-			await invokeAction(ctx, effect.target, effect.action, effect.args ?? {});
+			const message = await invokeAction(ctx, effect.target, effect.action, effect.args ?? {});
+			if (message) announcements.push(message);
 		} catch (err) {
-			if (err instanceof ActionError) {
-				new Notice(err.message);
-			} else {
-				console.error(err);
-				new Notice(`Could not run ${effect.action} on ${effect.target}`);
-			}
+			new Notice(effectError(effect, err));
 			return;
 		}
 	}
 
 	roller.roll(modifiers.notation);
+	if (announcements.length > 0) new Notice(announcements.join('\n'));
 }

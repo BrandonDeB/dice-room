@@ -1,4 +1,5 @@
 import { ComponentFactory } from "./base-component";
+import { ConsumableComponent } from "./consumable-component";
 import { InventoryComponent } from "./inventory";
 import { ModifierComponent } from "./modifier-component";
 import { SkillsComponent } from "./skills-component";
@@ -13,4 +14,5 @@ export function registerComponents() {
 	ComponentFactory.register(SkillsComponent);
 	ComponentFactory.register(StatsComponent);
 	ComponentFactory.register(ModifierComponent);
+	ComponentFactory.register(ConsumableComponent);
 }

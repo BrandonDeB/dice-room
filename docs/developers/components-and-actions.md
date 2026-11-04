@@ -141,7 +141,35 @@ static readonly metadata: ComponentMetadata = {
 ```
 
 Keep handlers free of side effects. They may be called again if the note changes,
-and a thrown error leaves the note untouched.
+and a thrown error leaves the note untouched. Rolls also run them as a dry run to preview
+what they will do, so they must not change anything themselves.
+
+### Describing an action
+
+An action can be an object with `run` (the handler) and `describe`. One `describe`
+function serves two places, so the wording lives in one spot:
+
+1. **Preview**, before a roll is made: rolls show it under their total, such as
+   "Uses 1 of Arrows (2 left)". `applied` is false.
+2. **Announcement**, after the action is saved: shown in a notice, such as
+   "Used 1 of Arrows. 1 left." `applied` is true.
+
+It receives the target's data `before` and `after` the action (for a preview, `after` is
+worked out without saving), and the action's `args`.
+
+```ts
+remove: {
+	run: (attrs, args) => { /* return YAML steps, or throw ActionError */ },
+	describe: ({ before, after, args, applied }) => {
+		const left = itemIn(applied ? after : before, args.item)?.quantity ?? 0;
+		return applied ? `Used 1 of ${args.item}. ${left} left.` : `Uses 1 of ${args.item} (${left} left)`;
+	},
+},
+```
+
+`previewAction` in `src/character.ts` runs the same target lookup and handler as
+`invokeAction` without saving. `previewEffects` in `src/roll.ts` previews all of a roll's
+effects; rolls display it, and `performRoll` checks it before running anything.
 
 Validate arguments with the helpers in `src/ui-lib/actions.ts`, such as `requireString` and
 `optionalPositiveInt`, because arguments often come from user-written YAML.
@@ -185,6 +213,22 @@ effects:
     action: "on"
     args:
       name: Bless
+```
+
+### Types holding named entries
+
+A type whose blocks hold a list of named entries, like `consumable`, sets `entryNames` in
+its metadata: a function returning the names in a block. Actions then take a `name`
+argument and run on the one block holding that entry. Add the `"uniqueEntryNames"` policy
+so a name used twice across the character shows an error.
+
+```ts
+static readonly metadata: ComponentMetadata = {
+	type: "consumable",
+	policies: ["uniqueEntryNames"],
+	actions: consumableActions,
+	entryNames: (attrs) => attrs.consumables.map(c => c.name),
+};
 ```
 
 ### How the target is found

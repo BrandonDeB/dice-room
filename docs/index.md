@@ -23,6 +23,7 @@ interactive character sheets inside your notes.
 - [Attacks: weapons and spells](components/attacks.md): to-hit and damage rolls, plus effects.
 - [Inventory](components/inventory.md): items and quantities that other components can change.
 - [Modifier](components/modifier.md): a named bonus with an on/off switch that rolls can include.
+- [Consumables](components/consumable.md): spell slots and other limited uses that refill.
 
 ## For developers
 

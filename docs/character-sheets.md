@@ -22,6 +22,7 @@ In reading view or live preview, the block becomes an interactive panel. Click i
 | [`spell`](components/attacks.md) | Spell attacks | No |
 | [`inventory`](components/inventory.md) | Items and quantities | Yes |
 | [`modifier`](components/modifier.md) | A bonus rolls can include, with a switch | No, but each name only once |
+| [`consumable`](components/consumable.md) | Spell slots and other limited uses | No, but each name only once |
 
 ## Linking notes to a character
 

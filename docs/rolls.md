@@ -45,21 +45,30 @@ Each effect has:
 
 - `target`: the component type to act on, for example `inventory`.
 - `action`: the name of an action that component publishes, for example `remove`.
-  Each component's page lists its actions, such as [inventory actions](components/inventory.md#actions).
+  Each component's page lists its actions, such as [inventory actions](components/inventory.md#actions)
+  or [consumable actions](components/consumable.md#actions).
 - `args`: the action's arguments.
 
 The target must be found exactly once among the character's notes.
 See [linking notes to a character](character-sheets.md#linking-notes-to-a-character).
 
+### Before you click
+
+Each roll shows what its effects will do, such as "Uses 1 of Arrows (2 left)" or
+"Uses 1 of 1st-level spell slots (3 of 4 left)". Each line links to the block it changes.
+If an effect would fail, the roll shows why in red instead, such as
+"Not enough Arrows: have 0, need 1", and its Roll button is hidden until there is enough again. These update whenever
+any of the character's notes change.
+
 ### What happens when you click
 
 1. If the Dice view is not open, or you have not joined a room, nothing happens
    and a notice tells you why. No effects run.
-2. The effects run in order.
-3. If an effect fails, for example "Not enough Arrows: have 0, need 1",
-   a notice explains why and **the dice are not thrown**.
-   Effects that already ran before the failure are not undone.
-4. Otherwise, the dice are thrown.
+2. Every effect is checked first. If any would fail, a notice explains why,
+   **nothing is spent, and the dice are not thrown**.
+3. The effects run in order, and the dice are thrown.
+4. A notice announces what the effects did, such as
+   "Used 1 of Arrows. 1 left." and "Used 1 of 1st-level spell slots. 2 of 4 left."
 
 ## Modifiers
 

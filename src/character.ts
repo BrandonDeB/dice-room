@@ -3,16 +3,13 @@ import { parse as yamlParse, parseDocument } from "yaml";
 import { getApp } from "./app-provider";
 import { getCharacterFiles } from "./utilities";
 import { ComponentFactory } from "./ui-lib/base-component";
-import { ActionArgs, ActionError, applyYamlSteps } from "./ui-lib/actions";
+import { ActionArgs, ActionDefinition, ActionError, applyStepsToData, applyYamlSteps, getAction } from "./ui-lib/actions";
 import { YamlStep } from "./ui-lib/capabilities";
 
 export interface BlockLocation {
-	/** Line of the opening ```dicelist fence. */
 	lineStart: number;
-	/** Line of the closing ``` fence. */
 	lineEnd: number;
 	type: string;
-	/** The block's parsed YAML. */
 	data: Record<string, unknown>;
 }
 
@@ -149,31 +146,52 @@ export function describeLookupProblem(type: string, lookup: UniqueLookup<unknown
 	return '';
 }
 
+/** Where an action will run: its definition, and the block it targets. */
+interface ActionTarget {
+	type: string;
+	definition: ActionDefinition;
+	file: TFile;
+	hint: BlockLocation;
+	isTarget: (block: BlockLocation) => boolean;
+	before: Record<string, unknown>;
+}
+
+/** A note and line to link to, such as the block an action changes. */
+export interface BlockTarget {
+	file: TFile;
+	line: number;
+}
+
 /**
- * Run an action published by another component type on this character.
- * The target block is located among the character's notes and edited in
- * place, so the target does not need to be open or rendered.
- * Throws ActionError with a user-facing message if the action is rejected.
+ * Find the action and the one block it should change among the character's notes.
+ * Shared by previews and real runs, so both pick the same target.
+ * Throws ActionError with a user-facing message if that isn't possible.
  */
-export async function invokeAction(
+async function resolveActionTarget(
 	ctx: MarkdownPostProcessorContext,
 	targetType: string,
 	action: string,
-	args: ActionArgs = {},
-): Promise<void> {
+	args: ActionArgs,
+): Promise<ActionTarget> {
 	const type = normalizeType(targetType);
 	const metadata = ComponentFactory.getMetadata(type);
-	const handler = metadata?.actions?.[action];
-	if (!handler) throw new ActionError(`"${targetType}" has no action named "${action}"`);
+	const definition = getAction(metadata?.actions, action);
+	if (!definition) throw new ActionError(`"${targetType}" has no action named "${action}"`);
 
 	// Types with a targetKey (like modifiers, by name) can have many blocks per
-	// character; the action's argument of that name picks which one.
-	const key = metadata?.targetKey;
+	// character; the action's argument of that name picks which one. Types with
+	// entryNames (like consumables) pick the block holding the entry named by `name`.
+	const key = metadata?.targetKey ?? (metadata?.entryNames ? 'name' : undefined);
 	const wanted = key ? args[key] : undefined;
 	if (key && (typeof wanted !== 'string' || wanted.trim() === '')) {
 		throw new ActionError(`Missing "${key}" to choose which ${type} to change`);
 	}
-	const isTarget = (b: BlockLocation) => b.type === type && (!key || sameKey(b.data[key], wanted));
+	const holds = (b: BlockLocation) => metadata?.targetKey
+		? sameKey(b.data[metadata.targetKey], wanted)
+		: metadata?.entryNames
+			? metadata.entryNames(b.data).some(name => sameKey(name, wanted))
+			: true;
+	const isTarget = (b: BlockLocation) => b.type === type && holds(b);
 
 	const matches = (await findBlocksOfType(ctx, type)).filter(m => isTarget(m.location));
 	if (matches.length !== 1) {
@@ -183,11 +201,56 @@ export async function invokeAction(
 		const what = key ? `${type} named "${wanted}"` : type;
 		throw new ActionError(describeLookupProblem(what, lookup));
 	}
-	const { file, location: hint } = matches[0];
+	const { file, location, data } = matches[0];
+	return { type, definition, file, hint: location, isTarget, before: data };
+}
+
+/** What an action would do, worked out without changing anything. */
+export interface ActionPreview {
+	message?: string;
+	target: BlockTarget;
+}
+
+/**
+ * Work out what an action would do, without saving: the same lookup and handler as
+ * invokeAction, run on the current data. Throws ActionError if it would be rejected,
+ * such as "Not enough Arrows", so rolls can show that before they're made.
+ */
+export async function previewAction(
+	ctx: MarkdownPostProcessorContext,
+	targetType: string,
+	action: string,
+	args: ActionArgs = {},
+): Promise<ActionPreview> {
+	const target = await resolveActionTarget(ctx, targetType, action, args);
+	const steps = target.definition.run(target.before, args);
+	const after = applyStepsToData(target.before, steps);
+	return {
+		message: target.definition.describe?.({ before: target.before, after, args, applied: false }),
+		target: { file: target.file, line: target.hint.lineStart },
+	};
+}
+
+/**
+ * Run an action published by another component type on this character.
+ * The target block is located among the character's notes and edited in
+ * place, so the target does not need to be open or rendered.
+ * Returns the action's announcement, if it has a description, such as
+ * "Used 1 of Arrows. 1 left."
+ * Throws ActionError with a user-facing message if the action is rejected.
+ */
+export async function invokeAction(
+	ctx: MarkdownPostProcessorContext,
+	targetType: string,
+	action: string,
+	args: ActionArgs = {},
+): Promise<string | undefined> {
+	const { type, definition, file, hint, isTarget } = await resolveActionTarget(ctx, targetType, action, args);
 
 	// Errors thrown inside vault.process are captured and re-thrown after,
 	// so a rejected action leaves the file untouched.
 	let failure: unknown = null;
+	let message: string | undefined;
 
 	await getApp().vault.process(file, (data) => {
 		try {
@@ -200,10 +263,12 @@ export async function invokeAction(
 			if (!block) throw new ActionError(`No ${type} found for this character`);
 
 			const doc = parseDocument(lines.slice(block.lineStart + 1, block.lineEnd).join('\n'));
-			const steps: YamlStep[] = handler(doc.toJS(), args);
+			const before = doc.toJS();
+			const steps: YamlStep[] = definition.run(before, args);
 			if (steps.length === 0) return data;
 
 			applyYamlSteps(doc, steps);
+			message = definition.describe?.({ before, after: doc.toJS(), args, applied: true });
 			lines.splice(
 				block.lineStart + 1,
 				block.lineEnd - block.lineStart - 1,
@@ -217,4 +282,5 @@ export async function invokeAction(
 	});
 
 	if (failure) throw failure;
+	return message;
 }
