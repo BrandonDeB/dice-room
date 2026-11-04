@@ -114,18 +114,14 @@ export abstract class AttackComponent extends BaseComponent<AttackAttributes> im
 		this.app = getApp();
 		// The picture sits on the right of the heading, with the title centered beside it.
 		const picture = this.picturePath();
-		this.container = createCard(this.containerEl, this.attributes.name, this.typeLabel,
-			picture ? controlEl => {
+		this.container = createCard(this.containerEl, this.attributes.name, this.typeLabel, {
+			description: this.attributes.description,
+			decorateHeading: picture ? controlEl => {
 				const img = controlEl.createEl("img", {cls: "dicelist-card-image"});
 				img.src = picture;
 				img.alt = this.attributes.name ?? '';
-			} : undefined);
-
-		if (this.attributes.description) {
-			this.container.createEl('p', {cls: 'dicelist-card-content dicelist-card-description', text: this.attributes.description});
-		}
-
-
+			} : undefined,
+		});
 
 		if (this.attributes.range) this.addDetailRow(this.container, 'Range', this.attributes.range);
 		this.renderDetails(this.container);
@@ -136,7 +132,7 @@ export abstract class AttackComponent extends BaseComponent<AttackAttributes> im
 
 		// A spell like Bless has nothing to roll; leave out rolls that are missing or 0.
 		this.rollLines = [];
-		if (hasDice(this.hitRoll)) this.addRollLine(this.container, 'To hit', this.hitRoll);
+		if (hasDice(this.hitRoll)) this.addRollLine(this.container, 'Hit', this.hitRoll);
 		if (hasDice(this.damageRoll)) this.addRollLine(this.container, 'Damage', this.damageRoll);
 
 		this.guard(this.refreshModifiers());

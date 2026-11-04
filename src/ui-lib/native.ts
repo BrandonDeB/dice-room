@@ -51,17 +51,25 @@ export function createSettingGroup(
  * "Longbow" followed by a "Weapon" badge (Obsidian's flair style); without one, the
  * type label is the heading, like "Inventory".
  */
+export interface CardOptions {
+	/** Shown under the title in muted text, like a setting's description. */
+	description?: string;
+	/** Adds content to the right of the heading, such as the component's picture. */
+	decorateHeading?: (controlEl: HTMLElement) => void;
+}
+
 export function createCard(
 	parent: HTMLElement,
 	title: string | undefined,
 	typeLabel: string,
-	/** Adds content to the right of the heading, such as the component's picture. */
-	decorateHeading?: (controlEl: HTMLElement) => void,
+	options: CardOptions = {},
 ): HTMLDivElement {
-	const heading = title
+	const { description, decorateHeading } = options;
+	const heading = title || description
 		? createFragment(fragment => {
-			fragment.appendText(title);
-			fragment.createSpan({ cls: 'flair dicelist-type', text: typeLabel });
+			fragment.appendText(title || typeLabel);
+			if (title) fragment.createSpan({ cls: 'flair dicelist-type', text: typeLabel });
+			if (description) fragment.createDiv({ cls: 'setting-item-description dicelist-card-description', text: description });
 		})
 		: typeLabel;
 	return createSettingGroup(parent, heading, 'dicelist-card', decorateHeading);

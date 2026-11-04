@@ -117,8 +117,12 @@ If your plugin does not need CSS, delete this file.
 	margin: var(--size-4-2) var(--setting-items-padding-x, var(--size-4-4));
 }
 
+/* A card's description sits under its title, styled like a setting's description.
+   It is inside the heading's name, so undo the heading's bold weight and size. */
 .dicelist-card-description {
-	color: var(--text-muted);
+	font-weight: var(--font-normal);
+	font-size: var(--font-ui-smaller);
+	padding-top: var(--size-4-1);
 }
 
 /* A card's picture, on the right of its heading. The heading row centers the
@@ -179,8 +183,52 @@ If your plugin does not need CSS, delete this file.
 	gap: var(--size-4-2);
 }
 
+/* All six abilities on one row, sharing the width equally. */
 .dicelist-abilities {
-	grid-template-columns: repeat(auto-fit, minmax(5.5em, 1fr));
+	grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+/* One ability: clicking the tile rolls a check; its Save button rolls the save. */
+.dicelist-ability {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-3);
+	min-width: 0;
+	padding: var(--size-4-2) var(--size-2-3);
+	border-radius: var(--radius-m);
+	background-color: var(--background-primary);
+	cursor: var(--cursor-link, pointer);
+}
+
+.dicelist-ability:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.dicelist-ability:focus-visible {
+	box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+	outline: none;
+}
+
+.dicelist-ability-header {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+}
+
+.dicelist-ability .dicelist-roll-button {
+	justify-content: center;
+	gap: var(--size-2-2);
+	min-width: 0;
+	padding: var(--size-2-2) var(--size-2-3);
+	overflow: hidden;
+	white-space: nowrap;
+}
+
+/* A saving throw you are proficient in. */
+.dicelist-roll-button.is-proficient .dicelist-roll-button-value {
+	color: var(--text-accent);
+	font-weight: var(--font-semibold);
 }
 
 .dicelist-skills {
@@ -190,11 +238,6 @@ If your plugin does not need CSS, delete this file.
 .dicelist-roll-button {
 	height: auto;
 	padding: var(--size-4-2) var(--size-4-3);
-}
-
-.dicelist-abilities .dicelist-roll-button {
-	flex-direction: column;
-	gap: var(--size-2-1);
 }
 
 .dicelist-skills .dicelist-roll-button {
