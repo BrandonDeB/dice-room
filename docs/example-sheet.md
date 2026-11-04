@@ -38,14 +38,14 @@ on:
 ## Ability scores
 
 Each score and its modifier are values, hidden since the tiles show them. Each ability is
-a check with its save nested inside, so `layout: grid` shows six tiles: click a tile for
+a check with its save nested inside, so `layout: { rolls: grid }` shows six tiles: click a tile for
 the check, or its Save button for the save. Rangers are proficient in Strength and
 Dexterity saves.
 
 ````markdown
 ```dicelist
 name: Ability scores
-layout: grid
+layout: { rolls: grid }
 values:
   - { name: str, value: 12, hidden: true }
   - { name: dex, value: 17, hidden: true }
@@ -109,7 +109,7 @@ add `2 * {{proficiency}}` instead. Perception is also a value, so Passive Percep
 ````markdown
 ```dicelist
 name: Skills
-layout: grid
+layout: { rolls: grid }
 values:
   - { name: perception, value: "{{wis mod}} + {{proficiency}}" }
 rolls:

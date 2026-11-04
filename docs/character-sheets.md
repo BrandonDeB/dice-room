@@ -34,7 +34,7 @@ modifier like Bless; a character is a card with values like level and armor clas
 | `type` | A tag shown beside the name, such as `weapon` or `spell`, so you can tell cards apart. It's only a label: any card can have any components. |
 | `description` | Markdown shown under the title. Links and formatting work. |
 | `picture` | An image in your vault, as a path or a wiki link, shown beside the title. |
-| `layout` | `grid` shows the card's rolls and values as tiles, like a sheet's ability scores or skill list. |
+| `layout` | Which components show as a grid of tiles, like `layout: { rolls: grid }` for a skill list. Each component named gets its own grid; the rest stay as rows. `rolls` and `values` can be grids. |
 | `on` | [Event subscriptions](events.md): actions this card runs when an event fires. |
 
 ## Components

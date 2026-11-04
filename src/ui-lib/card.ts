@@ -71,8 +71,9 @@ export class Card extends MarkdownRenderChild implements HoverParent {
 			void MarkdownRenderer.render(getApp(), data.description, text, this.host.ctx.sourcePath, this);
 		}
 
-		const layout = data.layout === 'grid' ? 'grid' : 'list';
-		let grid: HTMLElement | null = null;
+		// `layout: { rolls: grid }`: each component's layout is its own.
+		const layouts = data.layout && typeof data.layout === 'object' && !Array.isArray(data.layout)
+			? data.layout as Record<string, unknown> : {};
 		for (const component of componentsOf(data)) {
 			if (!component.render) continue;
 			const view: ComponentView = {
@@ -80,8 +81,7 @@ export class Card extends MarkdownRenderChild implements HoverParent {
 				data: data[component.key],
 				ctx: this.host.ctx,
 				owner: this,
-				layout,
-				grid: () => grid ??= el.createDiv({ cls: 'dicelist-card-content dicelist-roll-grid' }),
+				layout: layouts[component.key] === 'grid' ? 'grid' : 'list',
 				persist: steps => this.host.persist(underKey(component.key, steps)),
 				roll: roll => this.host.roll(roll),
 				refresh: update => { this.refreshers.push(update); },
@@ -128,6 +128,14 @@ export class Card extends MarkdownRenderChild implements HoverParent {
 			createCallout(el, 'warning', `Unknown ${unknown.length === 1 ? 'field' : 'fields'}: ${unknown.join(', ')}`,
 				`A card can have ${CARD_FIELDS.join(', ')}, and these components: ${allComponents().map(component => component.key).join(', ')}.`);
 		}
+		const layout = this.data.layout;
+		const layoutProblem = layout === undefined ? null
+			: !layout || typeof layout !== 'object' || Array.isArray(layout)
+				? 'Layout names the components it applies to, like layout: { rolls: grid }.'
+				: Object.entries(layout).map(([key, value]) =>
+					!componentsOf(this.data).some(component => component.key === key) ? `Layout names ${key}, but this card has no ${key}.`
+						: value !== 'grid' && value !== 'list' ? `Layout for ${key} should be grid or list.` : '').find(Boolean);
+		if (layoutProblem) createCallout(el, 'warning', layoutProblem);
 		const problems = checkSubscriptions(this.data);
 		if (problems.length > 0) {
 			const content = createCallout(el, 'warning', "Problems with this card's event subscriptions");

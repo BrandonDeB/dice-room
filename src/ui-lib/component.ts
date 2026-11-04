@@ -21,10 +21,8 @@ export interface ComponentView<T = any> {
 	ctx: MarkdownPostProcessorContext;
 	/** Owns events and child renders, and shows page previews for links. */
 	owner: Component & HoverParent;
-	/** `layout: grid` on the card draws rolls and values as tiles. */
+	/** `grid` when the card's `layout` names this component, like `layout: { rolls: grid }`. */
 	layout: 'list' | 'grid';
-	/** The card's one grid, shared by its components, so values and rolls sit together. */
-	grid(): HTMLElement;
 	/** Save YAML edits, with paths inside this component's data. */
 	persist(steps: YamlStep[]): Promise<void>;
 	roll(roll: Roll): void;

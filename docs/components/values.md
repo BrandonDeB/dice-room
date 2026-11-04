@@ -42,7 +42,7 @@ The card shows each value worked out, and which modifiers added to it, such as
 "Includes: Shield (+2)". A value with a mistake, or one that names a value the character
 doesn't have, shows why.
 
-With `layout: grid` on the card, values show as tiles in the same grid as the card's rolls, like a skill list with its passive score.
+With `layout: { values: grid }` on the card, values show as tiles in their own grid.
 Values you count with buttons still show as rows.
 
 ## Actions
