@@ -46,6 +46,7 @@ damageRoll: 2d10
 | `description` | No | Text shown under the name. |
 | `range` | No | Shown as "Range: ...". |
 | `picture` | No | An image in your vault, as a wiki link or a path. |
+| `use` | No | Effects run by a button without rolling, for spells like Goodberry. See [effects without a roll](#effects-without-a-roll). |
 | `publishes` | No | Modifiers this attack or spell provides, each with an on/off switch on the card. See below. |
 | `ability` | No | Works the rolls out from the character. See [rolls from the character](#rolls-from-the-character). |
 | `proficient` | No | Whether proficiency is added to the hit roll. Defaults to yes. |
@@ -115,6 +116,30 @@ hitRoll:
 
 Either roll can have effects, such as spending an arrow on the to-hit roll.
 See [rolls and effects](../rolls.md).
+
+### Effects without a roll
+
+Some spells and items do something without any dice, like Goodberry. List their effects
+under `use`, written the same way as a roll's effects. The card shows a row with a button:
+**Cast** on spells, **Use** on weapons. Leave out `hitRoll` and `damageRoll` if there's
+nothing to roll.
+
+```yaml
+type: spell
+name: Goodberry
+use:
+  - target: inventory
+    action: add
+    args: { item: Goodberry, quantity: 10, description: Eat one to restore 1 hit point }
+  - target: consumable
+    action: use
+    args: { name: 1st-level spell slots }
+```
+
+The row works like a roll's: it shows what will happen before you click, hides the button
+when an effect would fail, checks every effect before running any, and announces the result.
+The Dice view doesn't need to be open. Effects can fire events too. `$total` can't be used,
+since nothing is rolled.
 
 ## Modifiers
 

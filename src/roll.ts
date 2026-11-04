@@ -57,7 +57,7 @@ export function parseRoll(field: unknown, defaultCategories: string[] = []): Rol
 		if (typeof dice !== 'string' && typeof dice !== 'number') return null;
 		return {
 			notation: new DiceNotation(String(dice)),
-			effects: Array.isArray(effects) ? effects.filter(isEffect) : undefined,
+			effects: Array.isArray(effects) ? parseEffects(effects) : undefined,
 			modifiers: nameList(modifiers),
 			categories: [...new Set([...defaultCategories, ...nameList(categories)])],
 		};
@@ -199,13 +199,23 @@ async function runEffect(ctx: MarkdownPostProcessorContext, effect: Effect): Pro
 	return invokeAction(ctx, effect.target, effect.action, effect.args ?? {});
 }
 
+/** The effects a YAML list holds, skipping entries without a target and action. */
+export function parseEffects(value: unknown): Effect[] {
+	return Array.isArray(value) ? value.filter(isEffect) : [];
+}
+
 /**
- * Work out what each of a roll's effects would do, without changing anything.
- * Rolls show this before they're made, and performRoll checks it before running.
+ * Work out what each effect would do, without changing anything. Rolls and Use
+ * buttons show this first, and performRoll and performEffects check it before running.
+ * Without a roll (`rolled: false`), an effect using the total can't run.
  */
-export async function previewEffects(ctx: MarkdownPostProcessorContext, roll: Roll): Promise<EffectPreview[]> {
+export async function previewEffects(ctx: MarkdownPostProcessorContext, effects: Effect[] | undefined, rolled = true): Promise<EffectPreview[]> {
 	const previews: EffectPreview[] = [];
-	for (const effect of roll.effects ?? []) {
+	for (const effect of effects ?? []) {
+		if (!rolled && usesTotal(effect)) {
+			previews.push({ effect, problem: `${effect.action} uses ${TOTAL}, but nothing is rolled` });
+			continue;
+		}
 		try {
 			previews.push(await previewEffect(ctx, effect));
 		} catch (err) {
@@ -216,14 +226,37 @@ export async function previewEffects(ctx: MarkdownPostProcessorContext, roll: Ro
 }
 
 /**
- * Perform a roll for a component: work out its modifiers, check and then run its
- * effects, throw the dice with the modifiers added, and announce what the effects did
- * ("Used 1 of Arrows. 1 left.").
- * Nothing happens if the roller is not ready, so ammo is not spent on a roll that
- * never lands. Modifier problems, or any effect that would be rejected, stop the roll
- * before any effect runs. If an effect still fails while running (the note changed in
- * between), the user is told why and the dice are not thrown.
+ * Check every effect, then run those that don't need a total. Returns their
+ * announcements, or null after a Notice saying why nothing (or not all) ran.
+ * Checking first means a roll that would fail partway doesn't spend anything.
  */
+async function runImmediateEffects(ctx: MarkdownPostProcessorContext, effects: Effect[], rolled: boolean): Promise<string[] | null> {
+	const problems = (await previewEffects(ctx, effects, rolled))
+		.map(preview => preview.problem)
+		.filter((problem): problem is string => !!problem);
+	if (problems.length > 0) {
+		new Notice(problems.join(' '));
+		return null;
+	}
+	const announcements: string[] = [];
+	for (const effect of effects.filter(effect => !usesTotal(effect))) {
+		try {
+			const message = await runEffect(ctx, effect);
+			if (message) announcements.push(message);
+		} catch (err) {
+			new Notice(effectError(effect, err));
+			return null;
+		}
+	}
+	return announcements;
+}
+
+/** Run effects with no dice, like casting Goodberry, and announce what happened. */
+export async function performEffects(ctx: MarkdownPostProcessorContext, effects: Effect[]): Promise<void> {
+	const announcements = await runImmediateEffects(ctx, effects, false);
+	if (announcements && announcements.length > 0) new Notice(announcements.join('\n'));
+}
+
 export async function performRoll(
 	ctx: MarkdownPostProcessorContext,
 	roll: Roll,
@@ -237,26 +270,9 @@ export async function performRoll(
 		return;
 	}
 
-	// Check every effect first, so a roll that would fail partway doesn't spend anything.
-	const problems = (await previewEffects(ctx, roll))
-		.map(preview => preview.problem)
-		.filter((problem): problem is string => !!problem);
-	if (problems.length > 0) {
-		new Notice(problems.join(' '));
-		return;
-	}
-
 	const effects = roll.effects ?? [];
-	const announcements: string[] = [];
-	for (const effect of effects.filter(effect => !usesTotal(effect))) {
-		try {
-			const message = await runEffect(ctx, effect);
-			if (message) announcements.push(message);
-		} catch (err) {
-			new Notice(effectError(effect, err));
-			return;
-		}
-	}
+	const announcements = await runImmediateEffects(ctx, effects, true);
+	if (!announcements) return;
 
 	const outcome = roller.roll(modifiers.notation);
 	const total = outcome?.total ?? null;

@@ -51,6 +51,9 @@ Each effect has:
 
 The target must be found exactly once among the character's notes.
 
+Weapons and spells can also run effects with no roll at all, from a Use or Cast button.
+See [effects without a roll](components/attacks.md#effects-without-a-roll).
+
 ### Using the roll's total
 
 An effect argument written as `$total` is replaced with what the roll came to. Those

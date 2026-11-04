@@ -29,7 +29,9 @@ export interface SpellAttributes extends AttackAttributes {
 	save?: string;
 }
 
-export class SpellComponent extends AttackComponent {	
+export class SpellComponent extends AttackComponent {
+
+	protected useLabel = 'Cast';
 
 	static readonly metadata: ComponentMetadata = {
 		type: "spell",

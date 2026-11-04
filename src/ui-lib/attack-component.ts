@@ -3,7 +3,7 @@ import { Setting } from "obsidian";
 import { Persistable, Rollable, YamlStep } from "./capabilities";
 import { renderPublishedSwitches } from "./published-modifiers";
 import { addRollMenu, createBlockLink, modifierChoice, rollChoices, createCard, formatBonus, headingPicture, renderModifierList } from "./native";
-import { Roll, RollField, parseRoll, previewEffects } from "../roll";
+import { EffectPreview, Roll, RollField, parseEffects, parseRoll, performEffects, previewEffects } from "../roll";
 import { normalizeName, readableNotation, resolveRollModifiers } from "../modifiers";
 import { Sheet, d20, loadSheet } from "../sheet";
 import { Ability, abilityNamed } from "../abilites";
@@ -17,6 +17,8 @@ export interface AttackAttributes extends BaseAttributes {
 	picture: string | undefined;
 	range: string | undefined;
 	publishes?: unknown;
+	/** Effects run by a Use (or Cast) button, with no dice, like Goodberry making berries. */
+	use?: unknown;
 	/**
 	 * Works the rolls out from the character: the ability (a name, or `finesse` for the
 	 * better of Strength and Dexterity), whether proficient (default yes), a magic
@@ -96,6 +98,34 @@ export abstract class AttackComponent extends BaseComponent<AttackAttributes> im
 		this.rollLines.push(line);
 	}
 
+	/** The Use row, when the block has `use` effects. */
+	private useLine: { setting: Setting; buttonEl?: HTMLElement } | undefined;
+
+	/** The Use button's text. Spells say Cast. */
+	protected useLabel = 'Use';
+
+	/** A row whose button runs the block's `use` effects, without rolling. */
+	private addUseLine(parent: HTMLElement) {
+		const line: NonNullable<AttackComponent['useLine']> = { setting: new Setting(parent).setName(this.useLabel) };
+		line.setting.addButton(button => {
+			line.buttonEl = button.buttonEl;
+			button
+				.setButtonText(this.useLabel)
+				.setTooltip(`${this.useLabel} ${this.attributes.name ?? ''}`.trim())
+				.onClick(() => this.guard(performEffects(this.ctx, parseEffects(this.attributes.use))));
+		});
+		this.useLine = line;
+	}
+
+	/** "Uses 1 of Arrows (2 left)", each linking to the block it changes. */
+	private renderEffectLines(desc: HTMLElement, effects: EffectPreview[]) {
+		for (const effect of effects) {
+			if (!effect.message || !effect.target) continue;
+			const effectLine = desc.createDiv({ cls: 'roll-modifiers roll-effect' });
+			createBlockLink(effectLine, effect.message, effect.target, this.ctx.sourcePath, this);
+		}
+	}
+
 	/** Ability modifier, plus proficiency if proficient, plus the magic bonus. */
 	protected attackBonus(sheet: Sheet): number | null {
 		const ability = attackAbility(sheet, this.attributes.ability);
@@ -132,6 +162,16 @@ export abstract class AttackComponent extends BaseComponent<AttackAttributes> im
 	private async refreshRollInfo() {
 		const sheet = await loadSheet(this.ctx);
 		this.refreshDetails(sheet);
+		if (this.useLine) {
+			// Like a roll row: what will happen, or why not, and no button while it can't.
+			const effects = await previewEffects(this.ctx, parseEffects(this.attributes.use), false);
+			const problems = effects.map(effect => effect.problem).filter((problem): problem is string => !!problem);
+			this.useLine.buttonEl?.toggle(problems.length === 0);
+			const desc = this.useLine.setting.descEl;
+			desc.empty();
+			if (problems.length > 0) desc.createDiv({ cls: 'roll-modifiers roll-problem', text: problems.join(' ') });
+			else this.renderEffectLines(desc, effects);
+		}
 		for (const line of this.rollLines) {
 			// A spell like Bless has nothing to roll; hide rolls that are missing or 0.
 			const roll = line.makeRoll(sheet);
@@ -140,7 +180,7 @@ export abstract class AttackComponent extends BaseComponent<AttackAttributes> im
 			line.roll = roll;
 
 			const resolved = await resolveRollModifiers(this.ctx, roll);
-			const effects = await previewEffects(this.ctx, roll);
+			const effects = await previewEffects(this.ctx, roll.effects);
 			const problems = [
 				...resolved.problems,
 				...effects.map(effect => effect.problem).filter((problem): problem is string => !!problem),
@@ -163,12 +203,7 @@ export abstract class AttackComponent extends BaseComponent<AttackAttributes> im
 			// the modifier is set, so it can be previewed and switched on from there.
 			renderModifierList(desc, 'Includes', resolved.applied, 'roll-modifiers', this.ctx.sourcePath, this);
 			renderModifierList(desc, 'Off:', resolved.inactive, 'roll-modifiers roll-modifiers-off', this.ctx.sourcePath, this);
-			// "Uses 1 of Arrows (2 left)", linking to the block it changes.
-			for (const effect of effects) {
-				if (!effect.message || !effect.target) continue;
-				const effectLine = desc.createDiv({ cls: 'roll-modifiers roll-effect' });
-				createBlockLink(effectLine, effect.message, effect.target, this.ctx.sourcePath, this);
-			}
+			this.renderEffectLines(desc, effects);
 		}
 	}
 
@@ -199,6 +234,8 @@ export abstract class AttackComponent extends BaseComponent<AttackAttributes> im
 		}
 
 		// Categories let modifiers like "+1d4 to attacks" apply without being named.
+		this.useLine = undefined;
+		if (parseEffects(this.attributes.use).length > 0) this.addUseLine(this.container);
 		this.rollLines = [];
 		this.addRollLine(this.container, 'Hit', sheet => this.hitRollFor(sheet));
 		this.addRollLine(this.container, 'Damage', sheet =>
