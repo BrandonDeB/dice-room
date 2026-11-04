@@ -1,7 +1,6 @@
-import { ABILITIES, SKILLS, Skill, Ability, getAbilityModifier, SKILLABILITY} from 'src/abilites';
+import { SKILLS, Skill, SKILLABILITY } from 'src/abilites';
 import { BaseAttributes, BaseComponent, ComponentMetadata } from './base-component';
-import { StatAttributes } from './stats-component';
-import { describeLookupProblem, findUniqueBlock } from 'src/character';
+import { d20, loadSheet } from '../sheet';
 import { Rollable } from './capabilities';
 import { Roll } from '../roll';
 import { DiceNotation } from './ui-types';
@@ -25,63 +24,34 @@ export class SkillsComponent extends BaseComponent<SkillAttributes> implements R
 		this.onRoll = cb;
 	}
 
-	skillModifiers: Map<Skill, number> = new Map();
-	statModifiers: Map<Ability, number> = new Map();
-
-	getSkillRoll(skill: Skill): string {
-		const mod = this.skillModifiers.get(skill) ?? 0;
-		if (mod > 0) return `1d20+${mod}`;
-		if (mod < 0) return `1d20${mod}`;
-		return `1d20`;
-	}
-
-	applyAbilityMods(statBlock: StatAttributes) {
-		ABILITIES.map((ability: Ability, i: number) => {
-			this.statModifiers.set(ability, getAbilityModifier(statBlock.stats[i]) ?? 0);
-		})
-	}
-
-	/** Load stat modifiers. Returns a warning to show if they could not be used. */
-	async getAssociatedStats(): Promise<string | null> {
-		const lookup = await findUniqueBlock<StatAttributes>(this.ctx, 'stats');
-		if (lookup.status === 'found') {
-			this.applyAbilityMods(lookup.match.data);
-			return null;
-		}
-		return `${describeLookupProblem('stats', lookup)}. Skill bonuses do not include ability modifiers.`;
-	}
-
 	render() {
-		this.guard(this.renderWithStats());
+		this.guard(this.renderWithSheet());
 	}
 
-	private async renderWithStats() {
-		const warning = await this.getAssociatedStats();
-		if (warning) createCallout(this.containerEl, 'warning', warning);
+	/**
+	 * Proficiency and expertise come from this block's own YAML; ability modifiers and
+	 * the proficiency bonus from the shared sheet. Expertise doubles the bonus.
+	 */
+	private async renderWithSheet() {
+		const sheet = await loadSheet(this.ctx);
+		if (sheet.statsProblem) {
+			createCallout(this.containerEl, 'warning', `${sheet.statsProblem}. Skill bonuses do not include ability modifiers.`);
+		}
+		const lower = (list: unknown) => Array.isArray(list) ? list.map(item => String(item).toLowerCase()) : [];
+		const proficient = lower(this.attributes.proficiency);
+		const expertise = lower(this.attributes.expertise);
 
 		const buttons = SKILLS.map((skill: Skill) => {
-			const relevantStat = SKILLABILITY[skill];
-			const statBonus = this.statModifiers.get(relevantStat) ?? 0;
-			this.skillModifiers.set(skill, statBonus);
-
-			if (this.attributes.expertise?.some(
-				expertise => expertise.toLowerCase() == skill.toLowerCase()
-			)) {
-				this.skillModifiers.set(skill, statBonus + 4);
-			}
-
-			if (this.attributes.proficiency?.some(
-				proficiency => proficiency.toLowerCase() == skill.toLowerCase()
-			)) {
-				this.skillModifiers.set(skill, statBonus + 2);
-			}
-
-			const bonus = formatBonus(this.skillModifiers.get(skill) ?? 0);
+			const name = skill.toLowerCase();
+			const level = expertise.includes(name) ? 'expertise' : proficient.includes(name) ? 'proficient' : null;
+			const value = sheet.abilityModifier(SKILLABILITY[skill])
+				+ (level === 'expertise' ? 2 : level === 'proficient' ? 1 : 0) * sheet.proficiencyBonus;
+			const bonus = formatBonus(value);
 			return {
 				label: skill,
 				value: bonus,
-				description: `Roll ${skill} (${relevantStat}), ${bonus}`,
-				onClick: () => this.onRoll({ notation: new DiceNotation(this.getSkillRoll(skill)) }),
+				description: `Roll ${skill} (${SKILLABILITY[skill]}), ${bonus}${level ? `, ${level === 'expertise' ? 'expertise' : 'proficient'}` : ''}`,
+				onClick: () => this.onRoll({ notation: new DiceNotation(d20(value)) }),
 			};
 		});
 

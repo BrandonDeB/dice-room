@@ -20,11 +20,13 @@ expertise: [Sleight of Hand]
 | Field | Required | Description |
 | --- | --- | --- |
 | `type` | Yes | Must be `skills`. |
-| `proficiency` | No | Skills you are proficient in. Adds +2. |
-| `expertise` | No | Skills you have expertise in. Adds +4. |
+| `proficiency` | No | Skills you are proficient in. Adds your proficiency bonus. |
+| `expertise` | No | Skills you have expertise in. Adds twice your proficiency bonus. |
+
+The proficiency bonus comes from the [character](character.md) block's level, or the
+[stats](stats.md) block's `proficiencyBonus`, or +2. A skill listed under both fields counts as expertise.
 
 Skill names are not case sensitive, but must otherwise match the list below.
-Do not list a skill under both fields.
 
 ## Skills and their abilities
 

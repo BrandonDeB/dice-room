@@ -1,4 +1,5 @@
 import { ABILITIES, Ability, abilityNamed, getAbilityModifier } from 'src/abilites';
+import { d20, loadSheet, proficiencyForLevel } from '../sheet';
 import { BaseAttributes, BaseComponent, ComponentMetadata } from './base-component';
 import { Rollable } from './capabilities';
 import { Roll } from '../roll';
@@ -9,15 +10,8 @@ export interface StatAttributes extends BaseAttributes {
 	stats: number[];
 	/** Abilities you are proficient in for saving throws: full names or abbreviations. */
 	proficiencies?: string[];
-	/** Added to proficient saving throws. Defaults to +2. */
+	/** Added to proficient saving throws when there is no character block with a level. Defaults to +2. */
 	proficiencyBonus?: number;
-}
-
-const DEFAULT_PROFICIENCY_BONUS = 2;
-
-/** "1d20+3", "1d20-1", or "1d20" for a d20 roll with a bonus. */
-function d20(bonus: number): string {
-	return bonus === 0 ? '1d20' : `1d20${bonus > 0 ? '+' : ''}${bonus}`;
 }
 
 export class StatsComponent extends BaseComponent<StatAttributes> implements Rollable {
@@ -33,36 +27,6 @@ export class StatsComponent extends BaseComponent<StatAttributes> implements Rol
 		this.onRoll = cb;
 	}
 
-	get proficiencyBonus(): number {
-		const bonus = this.attributes.proficiencyBonus;
-		return typeof bonus === 'number' && Number.isFinite(bonus) ? bonus : DEFAULT_PROFICIENCY_BONUS;
-	}
-
-	/** Abilities with saving throw proficiency. */
-	get proficientAbilities(): Set<Ability> {
-		const entries = Array.isArray(this.attributes.proficiencies) ? this.attributes.proficiencies : [];
-		return new Set(entries.map(abilityNamed).filter((a): a is Ability => a !== null));
-	}
-
-	getAbilityBonus(index: number): number {
-		return getAbilityModifier(this.attributes.stats[index]);
-	}
-
-	getSaveBonus(index: number): number {
-		const proficient = this.proficientAbilities.has(ABILITIES[index]);
-		return this.getAbilityBonus(index) + (proficient ? this.proficiencyBonus : 0);
-	}
-
-	/** An ability check: d20 plus the ability modifier. */
-	getStatRoll(index: number): string {
-		return d20(this.getAbilityBonus(index));
-	}
-
-	/** A saving throw: d20 plus the ability modifier, plus proficiency if proficient. */
-	getSaveRoll(index: number): string {
-		return d20(this.getSaveBonus(index));
-	}
-
 	render() {
 		const entries = Array.isArray(this.attributes.proficiencies) ? this.attributes.proficiencies : [];
 		const unknown = entries.filter(entry => abilityNamed(entry) === null);
@@ -70,16 +34,29 @@ export class StatsComponent extends BaseComponent<StatAttributes> implements Rol
 			createCallout(this.containerEl, 'warning', `Unknown ability in proficiencies: ${unknown.join(', ')}`,
 				'Use full names like Dexterity or abbreviations like DEX.');
 		}
+		this.guard(this.renderWithSheet());
+	}
+
+	/**
+	 * Scores and save proficiencies come from this block's own YAML. The proficiency
+	 * bonus follows the character block's level, falling back to `proficiencyBonus`.
+	 */
+	private async renderWithSheet() {
+		const sheet = await loadSheet(this.ctx);
+		const own = this.attributes.proficiencyBonus;
+		const proficiencyBonus = sheet.level !== null ? proficiencyForLevel(sheet.level) : (typeof own === 'number' ? own : 2);
+		const proficient = new Set((this.attributes.proficiencies ?? []).map(abilityNamed));
 
 		const card = createCard(this.containerEl, undefined, this.typeLabel);
 		const grid = card.createDiv({ cls: 'dicelist-card-content dicelist-roll-grid dicelist-abilities' });
-		const proficient = this.proficientAbilities;
 
 		ABILITIES.forEach((ability: Ability, i: number) => {
 			const score = this.attributes.stats[i];
-			const check = formatBonus(this.getAbilityBonus(i));
-			const save = formatBonus(this.getSaveBonus(i));
 			const isProficient = proficient.has(ability);
+			const checkBonus = getAbilityModifier(score);
+			const saveBonus = checkBonus + (isProficient ? proficiencyBonus : 0);
+			const check = formatBonus(checkBonus);
+			const save = formatBonus(saveBonus);
 
 			// The whole tile rolls an ability check; the Save button inside rolls the save.
 			// A button can't contain a button, so the tile is a keyboard-usable role="button".
@@ -87,7 +64,7 @@ export class StatsComponent extends BaseComponent<StatAttributes> implements Rol
 				cls: 'dicelist-ability',
 				attr: { role: 'button', tabindex: '0', 'aria-label': `Roll ${ability} check, ${check}` },
 			});
-			const rollCheck = () => this.onRoll({ notation: new DiceNotation(this.getStatRoll(i)) });
+			const rollCheck = () => this.onRoll({ notation: new DiceNotation(d20(checkBonus)) });
 			tile.addEventListener('click', rollCheck);
 			tile.addEventListener('keydown', (event: KeyboardEvent) => {
 				if (event.target !== tile) return;
@@ -103,7 +80,7 @@ export class StatsComponent extends BaseComponent<StatAttributes> implements Rol
 
 			this.addRollButton(tile, 'Save', save,
 				`Roll ${ability} saving throw, ${save}${isProficient ? ', proficient' : ''}`,
-				() => this.getSaveRoll(i), isProficient);
+				() => d20(saveBonus), isProficient);
 		});
 	}
 

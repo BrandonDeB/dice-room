@@ -27,6 +27,7 @@ interactive character sheets inside your notes.
 - [Consumables](components/consumable.md): spell slots and other limited uses that refill.
 - [Rest](components/rest.md): short and long rest buttons that refill what's subscribed.
 - [Hit points](components/health.md): hit points, temporary hit points, hit dice and death saves.
+- [Character](components/character.md): level, proficiency bonus, armor class, speed, initiative and passive Perception.
 
 ## For developers
 

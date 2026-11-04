@@ -26,7 +26,7 @@ proficiencyBonus: 2
 | `type`             | Yes      | Must be `stats`.                                                                              |
 | `stats`            | Yes      | Six ability scores, in the order below.                                                       |
 | `proficiencies`    | No       | Saving throws you are proficient in. Full names like `Dexterity` or abbreviations like `DEX`. |
-| `proficiencyBonus` | No       | Added to proficient saving throws. Defaults to `2`.                                           |
+| `proficiencyBonus` | No       | Added to proficient saving throws, if there is no [character](character.md) block with a level. Defaults to `2`. |
 
 An unrecognized name in `proficiencies` shows a warning above the scores.
 

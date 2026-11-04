@@ -25,6 +25,7 @@ In reading view or live preview, the block becomes an interactive panel. Click i
 | [`consumable`](components/consumable.md) | Spell slots and other limited uses | No, but each name only once |
 | [`rest`](components/rest.md) | Short and long rest buttons | No |
 | [`health`](components/health.md) | Hit points, hit dice and death saves | Yes |
+| [`character`](components/character.md) | Level, proficiency bonus, armor class and more | Yes |
 
 ## Linking notes to a character
 
