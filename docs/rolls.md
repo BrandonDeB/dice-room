@@ -110,7 +110,8 @@ higher or lower one counts. This works on attack hit rolls, ability checks, savi
 skills and initiative.
 
 A [modifier](components/modifier.md) can grant advantage or disadvantage too, by using
-`advantage` or `disadvantage` as its value, for an effect that lasts a while, for example:
+`advantage` or `disadvantage` as its value, for an effect that lasts a while. Active
+[conditions](components/conditions.md) do this for you. As a modifier of your own, for example:
 
 ```yaml
 type: modifier

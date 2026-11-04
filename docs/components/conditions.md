@@ -1,9 +1,9 @@
 # Conditions
 
-Tracks the conditions affecting a character, and exhaustion. Each condition says what it
-does to your rolls, as a reminder: apply it when you roll, by right-clicking the roll and
-choosing advantage, disadvantage, or [a modifier for that roll](../rolls.md#a-modifier-for-one-roll).
-Conditions aren't added to every roll automatically, so they don't crowd your rolls.
+Tracks the conditions affecting a character, and exhaustion. While a condition that changes
+your own rolls is on, it applies to them as a [modifier](modifier.md), and those rolls list it,
+such as "Includes Poisoned (disadvantage)". Conditions that are off don't appear anywhere,
+so your rolls stay uncluttered.
 
 **One per character.**
 
@@ -25,7 +25,7 @@ exhaustion: 0
 | `active` | No | The conditions in effect. The switches save this for you. |
 | `exhaustion` | No | 0 to 6. The minus and plus buttons save this for you. |
 
-## What each condition reminds you of
+## What each condition does to your rolls
 
 | Condition | Effect |
 | --- | --- |
@@ -34,9 +34,14 @@ exhaustion: 0
 | Invisible | Advantage on attack rolls |
 | Charmed, Deafened, Grappled, Incapacitated, Paralyzed, Petrified, Stunned, Unconscious | Tracked only |
 
+Effects on other creatures' rolls, and automatic failures, are not applied: only your own
+rolls change. Advantage and disadvantage cancel out, so being both invisible and poisoned
+makes your attacks normal.
+
 **Exhaustion** uses the 2024 rules: each level takes 2 off every attack roll, ability check
-and saving throw, so add it with "Roll with a modifier" (such as `-4` at level 2). Level 6 is
-death. A [long rest](rest.md) removes one level.
+and saving throw while it's above 0. Level 6 is death. A [long rest](rest.md) removes one level.
+If you'd rather not track it here, add it to a single roll with
+[a modifier for that roll](../rolls.md#a-modifier-for-one-roll).
 
 ## Actions
 

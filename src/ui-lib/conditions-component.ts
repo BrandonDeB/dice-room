@@ -4,6 +4,7 @@ import { Persistable, YamlStep } from './capabilities';
 import { ActionError, ActionMap, requireString } from './actions';
 import { createCard } from './native';
 import { normalizeEventName } from '../events';
+import { Modifier, parseModifierValue } from '../modifiers';
 
 export interface ConditionsAttributes extends BaseAttributes {
 	/** The conditions in effect, e.g. [poisoned, prone]. */
@@ -13,9 +14,8 @@ export interface ConditionsAttributes extends BaseAttributes {
 }
 
 /**
- * The standard conditions, and what each does to your own rolls, as a reminder: conditions
- * are tracked here and applied when rolling (right-click a roll for advantage or
- * disadvantage), not added to every roll automatically.
+ * The standard conditions, and what each does to your own rolls when that can be modelled
+ * as a modifier. Only active conditions are applied. The rest are tracked only.
  */
 const CONDITIONS: { name: string; value?: string; appliesTo?: string[] }[] = [
 	{ name: 'Blinded', value: 'disadvantage', appliesTo: ['attack'] },
@@ -53,6 +53,27 @@ function requireCondition(args: Record<string, unknown>): string {
 	return condition.name.toLowerCase();
 }
 
+/**
+ * Active conditions with roll effects publish modifiers, and so does exhaustion above 0.
+ * Inactive ones publish nothing, so rolls don't list every possible condition.
+ */
+function conditionModifiers(attrs: ConditionsAttributes): Modifier[] {
+	const active = activeList(attrs);
+	const modifiers: Modifier[] = CONDITIONS
+		.filter(condition => condition.value && active.includes(condition.name.toLowerCase()))
+		.map(condition => ({
+			name: condition.name,
+			value: parseModifierValue(condition.value),
+			active: true,
+			categories: condition.appliesTo ?? [],
+		}));
+	const exhaustion = exhaustionOf(attrs);
+	if (exhaustion > 0) {
+		modifiers.push({ name: 'Exhaustion', value: parseModifierValue(-2 * exhaustion), active: true, categories: ['attack', 'check', 'save'] });
+	}
+	return modifiers;
+}
+
 /** Add or remove a condition by `name`, from effects or event subscriptions. */
 const conditionActions: ActionMap<ConditionsAttributes> = {
 	add: {
@@ -86,8 +107,9 @@ export class ConditionsComponent extends BaseComponent<ConditionsAttributes> imp
 	static readonly metadata: ComponentMetadata = {
 		type: "conditions",
 		label: "Conditions",
-		policies: ['unique'],
+		policies: ['unique', 'uniqueModifierNames'],
 		actions: conditionActions,
+		modifiers: conditionModifiers,
 		onEvent: conditionsOnEvent,
 		describeEvent: ({ after }) => `Exhaustion is now ${exhaustionOf(after)}.`,
 	}
@@ -106,7 +128,7 @@ export class ConditionsComponent extends BaseComponent<ConditionsAttributes> imp
 			void this.onPersist([{ op: 'set', path: ['exhaustion'], value: level }]);
 		const row = new Setting(card)
 			.setName('Exhaustion')
-			.setDesc(exhaustion === 0 ? 'None' : `Level ${exhaustion} of ${MAX_EXHAUSTION}: ${-2 * exhaustion} to every d20 roll. Add it with "Roll with a modifier" when you roll.${exhaustion === MAX_EXHAUSTION ? ' Level 6 is death.' : ''}`);
+			.setDesc(exhaustion === 0 ? 'None' : `Level ${exhaustion} of ${MAX_EXHAUSTION}: ${-2 * exhaustion} to every d20 roll${exhaustion === MAX_EXHAUSTION ? '. Level 6 is death.' : ''}`);
 		row.addExtraButton(button => button.setIcon('minus').setTooltip('Remove a level of exhaustion')
 			.setDisabled(exhaustion === 0).onClick(() => setExhaustion(exhaustion - 1)));
 		row.addExtraButton(button => button.setIcon('plus').setTooltip('Add a level of exhaustion')
@@ -115,7 +137,7 @@ export class ConditionsComponent extends BaseComponent<ConditionsAttributes> imp
 		for (const condition of CONDITIONS) {
 			const key = condition.name.toLowerCase();
 			const effect = condition.value
-				? `${condition.value === 'advantage' ? 'Advantage' : 'Disadvantage'} on ${condition.appliesTo?.join(' and ')} rolls: right-click a roll to apply it`
+				? `${condition.value === 'advantage' ? 'Advantage' : 'Disadvantage'} on ${condition.appliesTo?.join(' and ')} rolls: applied while on`
 				: 'Tracked only';
 			new Setting(card)
 				.setName(condition.name)
