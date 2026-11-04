@@ -207,7 +207,7 @@ For a bonus or penalty that only matters right now, such as a spell cast on you 
 or a DM's ruling, right-click the roll and choose **Roll with a modifier...**. In the dialog:
 
 1. Type a number like `-4` or dice like `1d4`. This is optional.
-2. On d20 rolls, choose **Disadvantage**, **Normal** or **Advantage**, side by side. Arrow keys move between them.
+2. On d20 rolls, choose **Disadvantage**, **Normal** or **Advantage**. Arrow keys move between them.
    On other rolls, switch on **Critical hit** to double the dice.
 3. Press Enter or Roll.
 
