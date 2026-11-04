@@ -9,6 +9,7 @@ export interface DiceRoomPluginSettings {
 	frontColor: string;
 	backColor: string;
 	texture: string;
+	textureOpacity: number;
 	material: string;
 }
 
@@ -18,6 +19,7 @@ export const DEFAULT_SETTINGS: DiceRoomPluginSettings = {
 	frontColor: '#ffffff',
 	backColor: '#000000',
 	texture: '',
+	textureOpacity: 100,
 	material: 'none'
 }
 
@@ -116,6 +118,7 @@ export class DiceRollSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.displayName)
 				.onChange(async (value) => {
 					this.plugin.settings.displayName = value;
+					await this.plugin.saveSettings();
 				}));
 
 		new Setting(containerEl).setName("Dice Customization").setHeading();
@@ -127,6 +130,7 @@ export class DiceRollSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.backColor)
 				.onChange(async (value) => {
 					this.plugin.settings.backColor = value;
+					await this.plugin.saveSettings();
 				})
 			})
 
@@ -137,6 +141,7 @@ export class DiceRollSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.frontColor)
 				.onChange(async (value) => {
 					this.plugin.settings.frontColor = value;
+					await this.plugin.saveSettings();
 				})
 			})
 		
@@ -156,10 +161,23 @@ export class DiceRollSettingTab extends PluginSettingTab {
 			});
 
 		new Setting(containerEl)
+			.setName("Dice Texture Opacity")
+			.setDesc("How strongly the texture shows over the dice color")
+			.addSlider((slider) => slider
+				.setLimits(0, 100, 5)
+				.setValue(this.plugin.settings.textureOpacity)
+				.setDynamicTooltip()
+				.onChange(async (value) => {
+					this.plugin.settings.textureOpacity = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
 			.setName("Dice Material")
+			.setDesc("The surface your dice are made of")
 			.addDropdown((dropdown) => { 
 				const materials = Object.keys(MATERIALTYPES);
-				materials.forEach(mat => dropdown.addOption(mat, mat));
+				materials.forEach(mat => dropdown.addOption(mat, MATERIALTYPES[mat]?.name ?? mat));
 
 				dropdown.setValue(this.plugin.settings.material || "none");
 
@@ -171,13 +189,13 @@ export class DiceRollSettingTab extends PluginSettingTab {
 		
 		new Setting(containerEl).setName("Dice Preview").setHeading();
 
-
-		const btn = containerEl.createEl('button', { text: 'Refresh', type: 'button' });
+		const previewSetting = new Setting(containerEl)
+			.setName("Test roll")
+			.setDesc("Roll a die with your current settings.");
 		const ua = containerEl.createDiv({cls: "preview-roller", attr: {id: "dice-preview-container"}});
-
-		btn.addEventListener('click', () => {
-			this.rollRefresh(ua);
-		});
+		previewSetting.addButton((button) => button
+			.setButtonText("Refresh")
+			.onClick(() => this.rollRefresh(ua)));
 
 	}
 }

@@ -14,7 +14,8 @@ export default class DiceRoomPlugin extends Plugin {
 			foreground: this.settings.frontColor,
 			background: this.settings.backColor,
 			material: this.settings.material,
-			texture: this.settings.texture
+			texture: this.settings.texture,
+			textureOpacity: this.settings.textureOpacity / 100,
 		}
 	}
 

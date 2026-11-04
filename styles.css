@@ -152,6 +152,7 @@ If your plugin does not need CSS, delete this file.
 .preview-roller {
 	height: 40%;
 	width: 100%;
+	margin: 0.75em 0;
 	outline: 2px solid rgba(255, 255, 255, 0.4);
 	border-radius: 2px;
 	position: relative;
