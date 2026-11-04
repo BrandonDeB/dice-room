@@ -4,7 +4,7 @@ import { FormulaError } from '../../formula';
 import { ValueDefinition } from '../../character-data';
 import { ActionError, ActionMap, ActionResult, optionalPositiveInt, requireString } from '../actions';
 import { CardComponent } from '../component';
-import { balanceGrid, createCallout, renderModifierList } from '../native';
+import { balanceGrid, createCallout, setHiddenDescription, renderModifierList } from '../native';
 
 /** One entry of a `values` list. */
 interface ValueEntry {
@@ -112,14 +112,13 @@ export const valuesComponent: CardComponent<ValueEntry[]> = {
 			const description = typeof entry.description === 'string' ? entry.description : '';
 
 			if (grid && !isCounter(entry)) {
-				const tile = grid.createDiv({ cls: 'dicelist-roll-button dicelist-value-tile', attr: { role: 'group', 'aria-label': name } });
+				const tile = grid.createDiv({ cls: 'dicelist-roll-button dicelist-value-tile' });
 				tile.createSpan({ cls: 'dicelist-roll-button-label', text: name });
 				const valueEl = tile.createSpan({ cls: 'dicelist-roll-button-value' });
 				shown.push({
 					name, show: (total) => {
 						valueEl.setText(total);
-						tile.setAttr('aria-label', `${name}, ${total}`);
-						tile.setAttr('title', description);
+						if (description) setHiddenDescription(tile, description);
 					},
 				});
 				return;
