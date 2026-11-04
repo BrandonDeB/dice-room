@@ -4,7 +4,7 @@ import { hasD20, readableNotation, resolveRollModifiers } from '../../modifiers'
 import { CharacterData } from '../../character-data';
 import { FormulaError } from '../../formula';
 import { CardComponent, ComponentView } from '../component';
-import { RollChange, addRollMenu, balanceGrid, setHiddenDescription, createBlockLink, createCallout, formatBonus, renderModifierList, rollMenu } from '../native';
+import { RollChange, addRollMenu, balanceGrid, createBlockLink, createCallout, formatBonus, renderModifierList, rollMenu } from '../native';
 
 /** What a roll came to on the last refresh, for drawing. */
 interface RollDetails {
@@ -54,11 +54,15 @@ function addMenu(view: ComponentView, el: HTMLElement, line: Partial<RollLine>) 
 	addRollMenu(el, () => rollMenu(hasD20(line.notation ?? ''), (change: RollChange) => view.roll({ ...roll, ...change })));
 }
 
-/** Everything a row would show, as one sentence, read out after a tile's name. */
-function spokenDetails(roll: Roll, { notation, value, advantage, draw }: RollDetails): string {
+/**
+ * Everything a row would show, as one sentence, for a tile's label. Obsidian shows the
+ * label as the tile's tooltip, so it's the only tooltip: no `title` as well.
+ */
+function spokenDetails(prefix: string, roll: Roll, { notation, value, advantage, draw }: RollDetails): string {
 	const scratch = createDiv();
 	draw(scratch);
 	return [
+		prefix,
 		value ?? '',
 		notation ? readableNotation(notation) : '',
 		advantage ? `with ${advantage}` : '',
@@ -111,7 +115,7 @@ function gridButton(view: ComponentView, parentEl: HTMLElement, problemsEl: HTML
 	line.setEnabled = enabled => { button.disabled = !enabled; };
 	line.describe = details => {
 		valueEl.setText(details.notation ? shortNotation(details.notation) : (details.value ?? ''));
-		setHiddenDescription(button, spokenDetails(roll, details));
+		button.setAttr('aria-label', spokenDetails(`${buttonText(roll)} ${label}`, roll, details));
 		for (const problem of details.problems) problemsEl.createDiv({ cls: 'roll-modifiers roll-problem', text: `${label}: ${problem}` });
 	};
 	return line as RollLine;
@@ -141,7 +145,7 @@ function gridTile(view: ComponentView, grid: HTMLElement, problemsEl: HTMLElemen
 	line.describe = details => {
 		const bonus = details.notation ? shortNotation(details.notation) : '';
 		valueEl.setText(details.value != null && bonus ? `${details.value} (${bonus})` : (details.value ?? bonus));
-		setHiddenDescription(tile, spokenDetails(roll, details));
+		tile.setAttr('aria-label', spokenDetails(`${buttonText(roll)} ${roll.name}`, roll, details));
 		for (const problem of details.problems) problemsEl.createDiv({ cls: 'roll-modifiers roll-problem', text: `${roll.name}: ${problem}` });
 	};
 	return [line as RollLine, ...(roll.rolls ?? []).map(child => gridButton(view, tile, problemsEl, child, roll))];

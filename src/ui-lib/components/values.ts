@@ -4,7 +4,7 @@ import { FormulaError } from '../../formula';
 import { ValueDefinition } from '../../character-data';
 import { ActionError, ActionMap, ActionResult, optionalPositiveInt, requireString } from '../actions';
 import { CardComponent } from '../component';
-import { balanceGrid, createCallout, setHiddenDescription, renderModifierList } from '../native';
+import { balanceGrid, createCallout, renderModifierList } from '../native';
 
 /** One entry of a `values` list. */
 interface ValueEntry {
@@ -118,7 +118,8 @@ export const valuesComponent: CardComponent<ValueEntry[]> = {
 				shown.push({
 					name, show: (total) => {
 						valueEl.setText(total);
-						if (description) setHiddenDescription(tile, description);
+						// Obsidian shows the label as the tooltip, so the description goes in it too.
+						tile.setAttr('aria-label', [`${name}, ${total}`, description].filter(Boolean).join('. '));
 					},
 				});
 				return;

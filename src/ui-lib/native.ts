@@ -117,24 +117,6 @@ export function balanceGrid(grid: HTMLElement, owner: { register(cb: () => unkno
 	update();
 }
 
-let describedCount = 0;
-
-/**
- * Details a screen reader reads after an element's name, without a tooltip: Obsidian
- * shows `aria-label` as a tooltip and browsers show `title`, so long details go in a
- * hidden element linked by `aria-describedby` instead. Call again to change the text.
- */
-export function setHiddenDescription(el: HTMLElement, text: string) {
-	let id = el.getAttr('aria-describedby');
-	let holder = id ? el.doc.getElementById(id) : null;
-	if (!holder) {
-		id = `dicelist-description-${++describedCount}`;
-		holder = el.createSpan({ cls: 'dicelist-visually-hidden', attr: { id } });
-		el.setAttr('aria-describedby', id);
-	}
-	holder.setText(text);
-}
-
 /** Hover source id for page previews of dicelist links. Registered in main.ts. */
 export const HOVER_SOURCE = 'dice-room';
 
