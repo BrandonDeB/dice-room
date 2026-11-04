@@ -61,8 +61,9 @@ export class DiceView extends ItemView {
 		return popup;
 	}
 
-	private createDiceBox(user: number, diceSettings: CustomDice) {
-		return new DiceBox(`#${this.getRollAreaId(user)}`, {
+	private createDiceBox(user: number, diceSettings: CustomDice, container: HTMLElement) {
+		// Pass the element, not a selector, so this works if the view is popped out.
+		return new DiceBox(container, {
 			theme_customColorset: diceSettings,
 			light_intensity: 1,
 			gravity_multiplier: 400,
@@ -103,7 +104,7 @@ export class DiceView extends ItemView {
 		const ua = rollView.createDiv({cls: "single-roller", attr: {id: this.getRollAreaId(user.id)}});
 		ua.createEl("h3", {cls: "player-label", text: user.name});
 		this.createPopup(ua, user.id);
-		const Box = this.createDiceBox(user.id, user.die);
+		const Box = this.createDiceBox(user.id, user.die, ua);
 		Box.initialize();
 		this.rollers.set(user.id, Box);
 	}

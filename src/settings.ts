@@ -1,4 +1,4 @@
-import { App, AbstractInputSuggest, TextComponent, PluginSettingTab, Setting } from 'obsidian';
+import { App, AbstractInputSuggest, Notice, TextComponent, PluginSettingTab, Setting } from 'obsidian';
 import DiceRoomPlugin from './main';
 import { DiceBox, TEXTURELIST, MATERIALTYPES } from '@3d-dice/dice-box-threejs';
 import { CustomDice } from './types';
@@ -61,20 +61,33 @@ export class DiceRollSettingTab extends PluginSettingTab {
 
 
 	async rollRefresh(ua: HTMLDivElement) {
-		if (this.previewRoller) {
-			this.previewRoller.destroy();
-			this.previewRoller = null;
-			ua.innerHTML = '';
+		try {
+			if (this.previewRoller) {
+				this.previewRoller.destroy();
+				this.previewRoller = null;
+				ua.innerHTML = '';
+			}
+			// Pass the element, not a selector: settings may open in a separate window,
+			// where a selector searched in the main window finds nothing.
+			this.previewRoller = new DiceBox(ua, {
+				theme_customColorset: this.plugin.getDie(),
+				light_intensity: 1,
+				gravity_multiplier: 400,
+				baseScale: 100,
+				strength: 8,
+			});
+			await this.previewRoller.initialize();
+			this.previewRoller.roll("1d20");
+		} catch (err) {
+			console.error(err);
+			new Notice(`Preview failed: ${err instanceof Error ? err.message : String(err)}`, 15000);
 		}
-		this.previewRoller = new DiceBox(`#dice-preview-container`, {
-			theme_customColorset: this.plugin.getDie(),
-			light_intensity: 1,
-			gravity_multiplier: 400,
-			baseScale: 100,
-			strength: 8,
-		});
-		await this.previewRoller.initialize();
-		this.previewRoller.roll("1d2");
+	}
+
+	hide(): void {
+		// Stop the preview's animation and free its renderer when settings close.
+		this.previewRoller?.destroy();
+		this.previewRoller = null;
 	}
 
 	display(): void {
