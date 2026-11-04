@@ -117,6 +117,38 @@ export function balanceGrid(grid: HTMLElement, owner: { register(cb: () => unkno
 	update();
 }
 
+/**
+ * An on/off switch that looks exactly like Obsidian's toggle, for a Setting row's controls.
+ * Obsidian's own toggle is a label around a hidden checkbox; clicking it inside a note
+ * sent the reader's place to the top. This one is a single focusable element instead:
+ * click it, or press Space or Enter, and screen readers announce it as a switch.
+ */
+export function addSwitch(
+	parent: HTMLElement,
+	label: string,
+	on: boolean,
+	onChange: (on: boolean) => void,
+): HTMLElement {
+	const el = parent.createDiv({
+		cls: ['checkbox-container', ...(on ? ['is-enabled'] : [])],
+		attr: { role: 'switch', tabindex: '0', 'aria-label': label, 'aria-checked': String(on) },
+	});
+	let value = on;
+	const flip = () => {
+		value = !value;
+		el.toggleClass('is-enabled', value);
+		el.setAttr('aria-checked', String(value));
+		onChange(value);
+	};
+	el.addEventListener('click', flip);
+	el.addEventListener('keydown', (event: KeyboardEvent) => {
+		if (event.key !== ' ' && event.key !== 'Enter') return;
+		event.preventDefault();
+		flip();
+	});
+	return el;
+}
+
 /** Hover source id for page previews of dicelist links. Registered in main.ts. */
 export const HOVER_SOURCE = 'dice-room';
 
