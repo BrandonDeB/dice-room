@@ -36,8 +36,16 @@ function isLayout(value: unknown): boolean {
 	return value === 'grid' || value === 'list' || layoutOf(value).columns !== undefined;
 }
 
-/** Every control on a card, in order, including Obsidian's icon buttons and toggles. */
-const CONTROLS = 'button, input, select, textarea, a, [tabindex], .clickable-icon, .checkbox-container';
+/**
+ * Every control on a card, in order, including Obsidian's icon buttons and toggles. A
+ * toggle's hidden checkbox isn't counted: the toggle itself is what takes focus.
+ */
+const CONTROLS = 'button, input:not(.checkbox-container input), select, textarea, a, [tabindex]:not(.checkbox-container input), .clickable-icon, .checkbox-container';
+
+/** The control an element belongs to: a toggle for its hidden checkbox, or the element itself. */
+function controlOf(el: Element | null): Element | null {
+	return el?.closest('.checkbox-container') ?? el?.closest(CONTROLS) ?? null;
+}
 
 /**
  * A change saved from a card redraws it, which would drop keyboard and screen reader
@@ -78,7 +86,7 @@ export class Card extends MarkdownRenderChild implements HoverParent {
 
 	onload() {
 		const remember = (event: Event) => {
-			this.lastControl = (event.target as HTMLElement | null)?.closest(CONTROLS) ?? null;
+			this.lastControl = controlOf(event.target as HTMLElement | null);
 		};
 		this.registerDomEvent(this.containerEl, 'pointerdown', remember, { capture: true });
 		this.registerDomEvent(this.containerEl, 'keydown', remember, { capture: true });
@@ -144,31 +152,37 @@ export class Card extends MarkdownRenderChild implements HoverParent {
 	/** Before a save, note which control made it. */
 	private rememberFocus() {
 		const active = this.containerEl.doc.activeElement;
-		const control = active && this.containerEl.contains(active) ? active.closest(CONTROLS) : this.lastControl;
+		const control = active && this.containerEl.contains(active) ? controlOf(active) : this.lastControl;
 		const index = control ? this.controls().indexOf(control) : -1;
 		if (index === -1 || this.host.lineStart === undefined) return;
 		pendingFocus = { path: this.host.ctx.sourcePath, lineStart: this.host.lineStart, index, until: Date.now() + 5000 };
 	}
 
 	/**
-	 * Focus the same control as before the save. If it can't take focus now, like a minus
-	 * button disabled at zero, the next one that can does.
+	 * Focus the same control as before the save. If it can't take focus, like a minus
+	 * button disabled at zero, the next one that can does. Obsidian may draw the card
+	 * before putting it on the page, and nothing can be focused until it's there, so
+	 * this waits for that, for up to a second.
 	 */
 	private restoreFocus() {
 		const pending = pendingFocus;
 		if (!pending || pending.path !== this.host.ctx.sourcePath || pending.lineStart !== this.host.lineStart) return;
 		pendingFocus = null;
 		if (Date.now() > pending.until) return;
-		const doc = this.containerEl.doc;
-		for (const control of this.controls().slice(pending.index)) {
-			const target = control instanceof HTMLElement ? control : null;
-			target?.focus({ preventScroll: true });
-			if (doc.activeElement === target) return;
-			// A toggle's focusable part is the checkbox inside it.
-			const inner = control.querySelector<HTMLElement>('input, button');
-			inner?.focus({ preventScroll: true });
-			if (inner && doc.activeElement === inner) return;
-		}
+		const giveUp = Date.now() + 1000;
+		const attempt = () => {
+			if (!this.containerEl.isConnected) {
+				if (Date.now() < giveUp) window.requestAnimationFrame(attempt);
+				return;
+			}
+			const doc = this.containerEl.doc;
+			for (const control of this.controls().slice(pending.index)) {
+				if (!(control instanceof HTMLElement)) continue;
+				control.focus({ preventScroll: true });
+				if (doc.activeElement === control) return;
+			}
+		};
+		attempt();
 	}
 
 	/** Load the character once, and give it to every component that shows something from it. */

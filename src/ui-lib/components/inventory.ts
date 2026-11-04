@@ -114,6 +114,17 @@ function renderItem(view: ComponentView<Inventory>, item: InventoryItem, index: 
 	const row = new Setting(view.el).setName(item.name);
 	if (typeof item.description === 'string' && item.description.trim() !== '') row.setDesc(item.description);
 
+	// Switches, like Equipped, come before the count.
+	for (const [name, on] of switchesOf(item)) {
+		row.addToggle(toggle => {
+			toggle.toggleEl.setAttr('aria-label', `${item.name} ${name.toLowerCase()}`);
+			toggle
+				.setValue(on)
+				.setTooltip(name)
+				.onChange(value => void view.persist([{ op: 'set', path: [index, 'switches', name], value }]));
+		});
+	}
+
 	let pending: number | null = null;
 	row.addText(text => {
 		text.inputEl.type = 'number';
@@ -135,16 +146,6 @@ function renderItem(view: ComponentView<Inventory>, item: InventoryItem, index: 
 			if (event.key === 'Enter') text.inputEl.blur();
 		});
 	});
-
-	for (const [name, on] of switchesOf(item)) {
-		row.addToggle(toggle => {
-			toggle.toggleEl.setAttr('aria-label', `${item.name} ${name.toLowerCase()}`);
-			toggle
-				.setValue(on)
-				.setTooltip(name)
-				.onChange(value => void view.persist([{ op: 'set', path: [index, 'switches', name], value }]));
-		});
-	}
 }
 
 /**
