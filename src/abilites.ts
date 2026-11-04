@@ -1,10 +1,3 @@
-export type ProficiencyCategory =
-   | "skill"
-   | "tool"
-   | "weapon"
-   | "armor"
-   | "language" 
-
 export const SKILLS = [
 	"Acrobatics",
 	"Animal Handling",
@@ -38,12 +31,6 @@ export const ABILITIES = [
 ] as const
 
 export type Ability = typeof ABILITIES[number]
-
-export type AbilityInfo = {
-   proficient: boolean,
-   expertise: boolean,
-   value: number,
-}
 
 export const SKILLABILITY: Record<Skill, Ability> = {
 	"Acrobatics": "Dexterity",

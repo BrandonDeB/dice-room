@@ -162,6 +162,7 @@ Components give their rolls these categories automatically:
 | [Stats](components/stats.md) | Saving throw | `save`, `saving throw`, the ability |
 | [Skills](components/skills.md) | Skill check | `check`, `skill`, the skill (`stealth`), its ability |
 | [Character](components/character.md) | Initiative | `initiative`, `check`, `dexterity` |
+| [Proficiencies](components/proficiencies.md) | Tool check | `check`, `tool`, the tool's name, its ability |
 | [Hit points](components/health.md) | Death save | `death save`, `save` |
 | [Hit points](components/health.md) | Hit die | `hit die` |
 

@@ -6,6 +6,7 @@ import { HealthComponent } from "./health-component";
 import { RestComponent } from "./rest-component";
 import { InventoryComponent } from "./inventory";
 import { ModifierComponent } from "./modifier-component";
+import { ProficienciesComponent } from "./proficiencies-component";
 import { SkillsComponent } from "./skills-component";
 import { SpellComponent } from "./spell-component";
 import { StatsComponent } from "./stats-component";
@@ -23,4 +24,5 @@ export function registerComponents() {
 	ComponentFactory.register(HealthComponent);
 	ComponentFactory.register(CharacterComponent);
 	ComponentFactory.register(ConditionsComponent);
+	ComponentFactory.register(ProficienciesComponent);
 }
