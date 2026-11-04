@@ -1,4 +1,5 @@
 import { MarkdownPostProcessorContext, TFile } from "obsidian";
+import { processFile } from "./file-edit";
 import { parseDocument } from "yaml";
 import { getApp } from "./app-provider";
 import { BlockTarget, findAllBlocks, findBlocks, hasComponent } from "./character";
@@ -180,7 +181,7 @@ export async function fireEvent(ctx: MarkdownPostProcessorContext, eventName: st
 	const failures: string[] = [];
 	for (const file of files.values()) {
 		const fileMessages: string[][] = [];
-		await app.vault.process(file, (data) => {
+		await processFile(file, (data) => {
 			const lines = data.split('\n');
 			// Edit from the bottom up, so earlier blocks keep their line numbers.
 			for (const block of findBlocks(lines).reverse()) {

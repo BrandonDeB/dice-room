@@ -36,6 +36,16 @@ function isLayout(value: unknown): boolean {
 	return value === 'grid' || value === 'list' || layoutOf(value).columns !== undefined;
 }
 
+/** Every control on a card, in order, including Obsidian's icon buttons and toggles. */
+const CONTROLS = 'button, input, select, textarea, a, [tabindex], .clickable-icon, .checkbox-container';
+
+/**
+ * A change saved from a card redraws it, which would drop keyboard and screen reader
+ * focus. The control that made the change is remembered here, by its position on the
+ * card, and focused again once the card is drawn anew.
+ */
+let pendingFocus: { path: string; lineStart: number; index: number; until: number } | null = null;
+
 /** "weapon" reads as "Weapon" in the badge; anything else is shown as written. */
 function tagLabel(tag: unknown): string | undefined {
 	if (typeof tag !== 'string' || tag.trim() === '') return undefined;
@@ -54,6 +64,9 @@ export class Card extends MarkdownRenderChild implements HoverParent {
 
 	private refreshers: ((character: CharacterData) => void | Promise<void>)[] = [];
 
+	/** The control last clicked or typed in, to focus again after a save redraws the card. */
+	private lastControl: Element | null = null;
+
 	constructor(
 		el: HTMLElement,
 		private readonly host: CardHost,
@@ -64,8 +77,14 @@ export class Card extends MarkdownRenderChild implements HoverParent {
 	}
 
 	onload() {
+		const remember = (event: Event) => {
+			this.lastControl = (event.target as HTMLElement | null)?.closest(CONTROLS) ?? null;
+		};
+		this.registerDomEvent(this.containerEl, 'pointerdown', remember, { capture: true });
+		this.registerDomEvent(this.containerEl, 'keydown', remember, { capture: true });
 		try {
 			this.render();
+			this.restoreFocus();
 		} catch (err) {
 			this.showError(err);
 		}
@@ -97,7 +116,10 @@ export class Card extends MarkdownRenderChild implements HoverParent {
 				ctx: this.host.ctx,
 				owner: this,
 				...layoutOf(layouts[component.key]),
-				persist: steps => this.host.persist(underKey(component.key, steps)),
+				persist: steps => {
+					this.rememberFocus();
+					return this.host.persist(underKey(component.key, steps));
+				},
 				roll: roll => this.host.roll(roll),
 				refresh: update => { this.refreshers.push(update); },
 				guard: task => this.guard(task),
@@ -112,6 +134,40 @@ export class Card extends MarkdownRenderChild implements HoverParent {
 			this.registerEvent(getApp().metadataCache.on('changed', file => {
 				if (isCharacterFile(this.host.ctx, file)) refresh();
 			}));
+		}
+	}
+
+	private controls(): Element[] {
+		return Array.from(this.containerEl.querySelectorAll(CONTROLS));
+	}
+
+	/** Before a save, note which control made it. */
+	private rememberFocus() {
+		const active = this.containerEl.doc.activeElement;
+		const control = active && this.containerEl.contains(active) ? active.closest(CONTROLS) : this.lastControl;
+		const index = control ? this.controls().indexOf(control) : -1;
+		if (index === -1 || this.host.lineStart === undefined) return;
+		pendingFocus = { path: this.host.ctx.sourcePath, lineStart: this.host.lineStart, index, until: Date.now() + 5000 };
+	}
+
+	/**
+	 * Focus the same control as before the save. If it can't take focus now, like a minus
+	 * button disabled at zero, the next one that can does.
+	 */
+	private restoreFocus() {
+		const pending = pendingFocus;
+		if (!pending || pending.path !== this.host.ctx.sourcePath || pending.lineStart !== this.host.lineStart) return;
+		pendingFocus = null;
+		if (Date.now() > pending.until) return;
+		const doc = this.containerEl.doc;
+		for (const control of this.controls().slice(pending.index)) {
+			const target = control instanceof HTMLElement ? control : null;
+			target?.focus({ preventScroll: true });
+			if (doc.activeElement === target) return;
+			// A toggle's focusable part is the checkbox inside it.
+			const inner = control.querySelector<HTMLElement>('input, button');
+			inner?.focus({ preventScroll: true });
+			if (inner && doc.activeElement === inner) return;
 		}
 	}
 

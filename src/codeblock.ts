@@ -1,4 +1,5 @@
 import { MarkdownPostProcessorContext, TFile } from "obsidian";
+import { processFile } from "./file-edit";
 import { parse as yamlParse, parseDocument } from "yaml";
 import { YamlStep } from "./ui-lib/capabilities";
 import { getApp } from "./app-provider";
@@ -41,7 +42,7 @@ export default class CodeBlock {
 
 		const { lineStart, lineEnd } = section;
 
-		await app.vault.process(file, (data) => {
+		await processFile(file, (data) => {
 			const lines = data.split('\n');
 
 			if (!lines[lineStart]?.startsWith('```dicelist')) return data;

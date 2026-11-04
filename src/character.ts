@@ -1,4 +1,5 @@
 import { MarkdownPostProcessorContext, TFile } from "obsidian";
+import { processFile } from "./file-edit";
 import { parse as yamlParse, parseDocument } from "yaml";
 import { getApp } from "./app-provider";
 import { getCharacterFiles } from "./utilities";
@@ -259,12 +260,12 @@ export async function invokeAction(
 ): Promise<string | undefined> {
 	const { key, definition, file, hint, isTarget } = await resolveActionTarget(ctx, targetType, action, args, card);
 
-	// Errors thrown inside vault.process are captured and re-thrown after,
+	// Errors thrown inside processFile are captured and re-thrown after,
 	// so a rejected action leaves the file untouched.
 	let failure: unknown = null;
 	let message: string | undefined;
 
-	await getApp().vault.process(file, (data) => {
+	await processFile(file, (data) => {
 		try {
 			const lines = data.split('\n');
 			// Normally the block is still where we found it; scan only if the note changed.
