@@ -42,7 +42,8 @@ Each roll has:
 Each row shows the dice it will throw with modifiers included, which modifiers those are,
 and what its effects will do. These update whenever any of the character's notes change.
 
-With `layout: { rolls: grid }` on the card, its rolls show as a grid of buttons, like a skill list, and
+With `layout: { rolls: grid }` on the card, or `layout: { rolls: { columns: 3 } }` for at
+most three columns, its rolls show as a [grid](character-sheets.md#grids) of buttons, like a skill list, and
 a d20 roll shows only its bonus, such as **Stealth +5**. Everything a row would show is
 read out with the button and shown as its tooltip.
 

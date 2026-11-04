@@ -21,6 +21,21 @@ export interface CardHost {
 	lineStart: number | undefined;
 }
 
+/**
+ * One component's layout: `grid`, `list`, or `{ columns: 3 }` for a grid of at most
+ * three columns. Returns null for anything else, so the card can warn.
+ */
+function layoutOf(value: unknown): { layout: 'list' | 'grid'; columns?: number } {
+	if (value === 'grid') return { layout: 'grid' };
+	const columns = (value as { columns?: unknown } | null)?.columns;
+	if (typeof columns === 'number' && Number.isInteger(columns) && columns >= 1) return { layout: 'grid', columns };
+	return { layout: 'list' };
+}
+
+function isLayout(value: unknown): boolean {
+	return value === 'grid' || value === 'list' || layoutOf(value).columns !== undefined;
+}
+
 /** "weapon" reads as "Weapon" in the badge; anything else is shown as written. */
 function tagLabel(tag: unknown): string | undefined {
 	if (typeof tag !== 'string' || tag.trim() === '') return undefined;
@@ -81,7 +96,7 @@ export class Card extends MarkdownRenderChild implements HoverParent {
 				data: data[component.key],
 				ctx: this.host.ctx,
 				owner: this,
-				layout: layouts[component.key] === 'grid' ? 'grid' : 'list',
+				...layoutOf(layouts[component.key]),
 				persist: steps => this.host.persist(underKey(component.key, steps)),
 				roll: roll => this.host.roll(roll),
 				refresh: update => { this.refreshers.push(update); },
@@ -134,7 +149,7 @@ export class Card extends MarkdownRenderChild implements HoverParent {
 				? 'Layout names the components it applies to, like layout: { rolls: grid }.'
 				: Object.entries(layout).map(([key, value]) =>
 					!componentsOf(this.data).some(component => component.key === key) ? `Layout names ${key}, but this card has no ${key}.`
-						: value !== 'grid' && value !== 'list' ? `Layout for ${key} should be grid or list.` : '').find(Boolean);
+						: !isLayout(value) ? `Layout for ${key} should be grid, list, or columns with a whole number, like { columns: 3 }.` : '').find(Boolean);
 		if (layoutProblem) createCallout(el, 'warning', layoutProblem);
 		const problems = checkSubscriptions(this.data);
 		if (problems.length > 0) {

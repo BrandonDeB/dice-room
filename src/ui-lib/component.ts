@@ -23,6 +23,8 @@ export interface ComponentView<T = any> {
 	owner: Component & HoverParent;
 	/** `grid` when the card's `layout` names this component, like `layout: { rolls: grid }`. */
 	layout: 'list' | 'grid';
+	/** The most columns its grid may have, from `layout: { rolls: { columns: 3 } }`. */
+	columns?: number;
 	/** Save YAML edits, with paths inside this component's data. */
 	persist(steps: YamlStep[]): Promise<void>;
 	roll(roll: Roll): void;

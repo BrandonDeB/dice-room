@@ -184,8 +184,10 @@ If your plugin does not need CSS, delete this file.
 
 /* `layout: grid` on a card: rolls and values as tiles that fill the width. */
 .dicelist-roll-grid {
+	--dicelist-tile-width: 11;
 	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(11em, 1fr));
+	/* The column count is set by balanceGrid, to keep rows even. */
+	grid-template-columns: repeat(var(--dicelist-columns, 1), minmax(0, 1fr));
 	gap: var(--size-4-2);
 }
 
@@ -198,7 +200,7 @@ If your plugin does not need CSS, delete this file.
 
 /* Tiles with rolls inside, like abilities: narrower, so six fit on a row. */
 .dicelist-tile-grid {
-	grid-template-columns: repeat(auto-fill, minmax(6.5em, 1fr));
+	--dicelist-tile-width: 6.5;
 }
 
 /* Clicking the tile makes its roll; the buttons inside make the others. */

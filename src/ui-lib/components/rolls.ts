@@ -4,7 +4,7 @@ import { hasD20, readableNotation, resolveRollModifiers } from '../../modifiers'
 import { CharacterData } from '../../character-data';
 import { FormulaError } from '../../formula';
 import { CardComponent, ComponentView } from '../component';
-import { RollChange, addRollMenu, createBlockLink, createCallout, formatBonus, renderModifierList, rollMenu } from '../native';
+import { RollChange, addRollMenu, balanceGrid, createBlockLink, createCallout, formatBonus, renderModifierList, rollMenu } from '../native';
 
 /** What a roll came to on the last refresh, for drawing. */
 interface RollDetails {
@@ -213,6 +213,7 @@ export const rollsComponent: CardComponent<unknown[]> = {
 			// Tiles with rolls inside are narrower, so six abilities fit on a row.
 			const tiles = rolls.some(roll => roll.rolls || roll.value != null);
 			const grid = view.el.createDiv({ cls: ['dicelist-card-content', 'dicelist-roll-grid', ...(tiles ? ['dicelist-tile-grid'] : [])] });
+			balanceGrid(grid, view.owner, view.columns);
 			problemsEl = view.el.createDiv({ cls: 'dicelist-card-content' });
 			for (const roll of rolls) {
 				lines.push(...(roll.rolls || roll.value != null

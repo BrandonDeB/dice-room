@@ -93,6 +93,30 @@ export function createCallout(
 	return content;
 }
 
+/**
+ * Keep a grid's rows even: as many columns as fit (and at most `maxColumns`), then
+ * spread the tiles so rows are as full as each other. Six tiles with room for five
+ * become two rows of three, not five and one. Updates when the note's width changes.
+ */
+export function balanceGrid(grid: HTMLElement, owner: { register(cb: () => unknown): void }, maxColumns?: number) {
+	const update = () => {
+		const count = grid.childElementCount;
+		if (count === 0 || grid.clientWidth === 0) return;
+		const style = getComputedStyle(grid);
+		const fontSize = parseFloat(style.fontSize) || 16;
+		const gap = parseFloat(style.columnGap) || 0;
+		const tile = (parseFloat(style.getPropertyValue('--dicelist-tile-width')) || 11) * fontSize;
+		const fit = Math.max(1, Math.floor((grid.clientWidth + gap) / (tile + gap)));
+		const most = Math.min(fit, maxColumns ?? Infinity, count);
+		const rows = Math.ceil(count / most);
+		grid.setCssProps({ '--dicelist-columns': String(Math.ceil(count / rows)) });
+	};
+	const observer = new ResizeObserver(() => update());
+	observer.observe(grid);
+	owner.register(() => observer.disconnect());
+	update();
+}
+
 /** Hover source id for page previews of dicelist links. Registered in main.ts. */
 export const HOVER_SOURCE = 'dice-room';
 

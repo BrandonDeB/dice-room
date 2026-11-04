@@ -4,7 +4,7 @@ import { FormulaError } from '../../formula';
 import { ValueDefinition } from '../../character-data';
 import { ActionError, ActionMap, ActionResult, optionalPositiveInt, requireString } from '../actions';
 import { CardComponent } from '../component';
-import { createCallout, renderModifierList } from '../native';
+import { balanceGrid, createCallout, renderModifierList } from '../native';
 
 /** One entry of a `values` list. */
 interface ValueEntry {
@@ -99,6 +99,7 @@ export const valuesComponent: CardComponent<ValueEntry[]> = {
 	render(view) {
 		const list = entries(view.data);
 		const grid = view.layout === 'grid' ? view.el.createDiv({ cls: 'dicelist-card-content dicelist-roll-grid' }) : null;
+		if (grid) balanceGrid(grid, view.owner, view.columns);
 		const shown: { name: string; show: (total: string, detail: (el: HTMLElement) => void) => void }[] = [];
 
 		list.forEach((entry, index) => {
