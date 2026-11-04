@@ -2,6 +2,7 @@ import { MarkdownPostProcessorContext, Notice } from "obsidian";
 import { invokeAction } from "./character";
 import { ActionError, Effect } from "./ui-lib/actions";
 import { DiceNotation } from "./ui-lib/ui-types";
+import { nameList, resolveRollModifiers } from "./modifiers";
 
 /**
  * A single clickable roll: the dice to throw, plus effects on other
@@ -11,31 +12,49 @@ import { DiceNotation } from "./ui-lib/ui-types";
 export interface Roll {
 	notation: DiceNotation;
 	effects?: Effect[];
+	/** Names of modifiers this roll subscribes to, e.g. ["Archery"]. */
+	modifiers?: string[];
+	/** Kinds of roll this is, e.g. ["attack", "weapon"]. Modifiers for these categories apply. */
+	categories?: string[];
 }
 
 /**
  * How a roll is written in YAML. Either a plain dice string:
  *   hitRoll: 1d20+5
- * or an object when it has effects:
+ * or an object when it has effects, modifiers or extra categories:
  *   hitRoll:
  *     dice: 1d20+5
  *     effects:
  *       - { target: inventory, action: remove, args: { item: Arrows } }
+ *     modifiers: [Archery]
+ *     categories: [ranged]
  */
-export type RollField = string | number | { dice: string | number; effects?: Effect[] };
+export type RollField = string | number | {
+	dice: string | number;
+	effects?: Effect[];
+	modifiers?: string[];
+	categories?: string[];
+};
 
-/** Normalize a YAML roll field. Returns null if it is missing or malformed. */
-export function parseRoll(field: unknown): Roll | null {
+/**
+ * Normalize a YAML roll field. Returns null if it is missing or malformed.
+ * `defaultCategories` are the categories the component gives this roll (such as
+ * ["attack", "weapon"]); the YAML can add more.
+ */
+export function parseRoll(field: unknown, defaultCategories: string[] = []): Roll | null {
 	if (typeof field === 'string' || typeof field === 'number') {
-		return { notation: new DiceNotation(String(field)) };
+		return { notation: new DiceNotation(String(field)), categories: [...defaultCategories] };
 	}
 
 	if (field && typeof field === 'object') {
-		const { dice, effects } = field as { dice?: unknown; effects?: unknown };
+		const { dice, effects, modifiers, categories } =
+			field as { dice?: unknown; effects?: unknown; modifiers?: unknown; categories?: unknown };
 		if (typeof dice !== 'string' && typeof dice !== 'number') return null;
 		return {
 			notation: new DiceNotation(String(dice)),
 			effects: Array.isArray(effects) ? effects.filter(isEffect) : undefined,
+			modifiers: nameList(modifiers),
+			categories: [...new Set([...defaultCategories, ...nameList(categories)])],
 		};
 	}
 	return null;
@@ -54,10 +73,12 @@ export interface DiceRoller {
 }
 
 /**
- * Perform a roll for a component: run its effects in order, then throw the dice.
+ * Perform a roll for a component: work out its modifiers, run its effects in order,
+ * then throw the dice with the modifiers added.
  * Nothing happens if the roller is not ready, so ammo is not spent on a roll that
- * never lands. If an effect is rejected, the user is told why and the dice are not
- * thrown. Effects that already succeeded are not undone.
+ * never lands. Modifier problems (a missing or duplicated modifier, a bad value)
+ * stop the roll before any effects run. If an effect is rejected, the user is told
+ * why and the dice are not thrown. Effects that already succeeded are not undone.
  */
 export async function performRoll(
 	ctx: MarkdownPostProcessorContext,
@@ -65,6 +86,12 @@ export async function performRoll(
 	roller: DiceRoller,
 ): Promise<void> {
 	if (!roller.ready()) return;
+
+	const modifiers = await resolveRollModifiers(ctx, roll);
+	if (modifiers.problems.length > 0) {
+		new Notice(modifiers.problems.join(' '));
+		return;
+	}
 
 	for (const effect of roll.effects ?? []) {
 		try {
@@ -80,5 +107,5 @@ export async function performRoll(
 		}
 	}
 
-	roller.roll(roll.notation.toString());
+	roller.roll(modifiers.notation);
 }

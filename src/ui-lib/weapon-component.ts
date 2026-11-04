@@ -1,3 +1,5 @@
+import { ComponentMetadata } from './base-component'
+import { modifiersFromPublishes } from './published-modifiers'
 import { AttackComponent, AttackAttributes } from './attack-component'
 
 export interface WeaponAttributes extends AttackAttributes {
@@ -6,9 +8,10 @@ export interface WeaponAttributes extends AttackAttributes {
 
 export class WeaponComponent extends AttackComponent {	
 
-	static readonly metadata = {
+	static readonly metadata: ComponentMetadata = {
 		type: "weapon",
-		policies: []
+		policies: ["uniqueModifierNames"],
+		modifiers: modifiersFromPublishes,
 	}
 
 	weaponType: string | undefined;

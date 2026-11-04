@@ -50,7 +50,7 @@ export class SkillsComponent extends BaseComponent<SkillAttributes> implements R
 	}
 
 	render() {
-		void this.renderWithStats();
+		this.guard(this.renderWithStats());
 	}
 
 	private async renderWithStats() {

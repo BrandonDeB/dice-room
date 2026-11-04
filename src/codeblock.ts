@@ -6,6 +6,7 @@ import { getApp } from "./app-provider";
 import { applyYamlSteps } from "./ui-lib/actions";
 import { DiceRoller, performRoll } from "./roll";
 import { PolicyViolation, checkPolicies } from "./ui-lib/policies";
+import { errorMessage, renderBlockError } from "./ui-lib/block-error";
 
 function isRollable(
     component: BaseComponent<any>
@@ -101,21 +102,56 @@ export default class CodeBlock {
 		}
 	}
 
+	/** Build the block's component, or show why it can't be built. Never leaves it blank. */
 	async initialize() {
-		const componentData = yamlParse(this.source) as BaseAttributes;
-		if (!componentData?.type) return;
+		try {
+			await this.build();
+		} catch (err) {
+			console.error(err);
+			this.el.empty();
+			renderBlockError(this.el, 'Could not display this dicelist block', errorMessage(err));
+		}
+	}
+
+	private async build() {
+		let parsed: unknown;
+		try {
+			parsed = yamlParse(this.source);
+		} catch (err) {
+			// The first line has the reason and position; the rest is a text-art pointer.
+			renderBlockError(this.el, "This block's YAML can't be read", errorMessage(err).split('\n')[0]);
+			return;
+		}
+
+		const example = 'For example, start it with: type: inventory';
+		if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+			renderBlockError(this.el, 'This dicelist block is empty or not a list of fields', example);
+			return;
+		}
+		const componentData = parsed as BaseAttributes;
+		if (typeof componentData.type !== 'string' || componentData.type.trim() === '') {
+			renderBlockError(this.el, 'This dicelist block needs a type', example);
+			return;
+		}
 
 		const metadata = ComponentFactory.getMetadata(componentData.type);
-		if (!metadata) return;
+		if (!metadata) {
+			const known = ComponentFactory.allMetadata().map(m => m.type).join(', ');
+			renderBlockError(this.el, `Unknown component type "${componentData.type}"`, `Available types: ${known}.`);
+			return;
+		}
 
-		const violations = await checkPolicies(metadata, this.ctx);
+		const violations = await checkPolicies(metadata, this.ctx, componentData);
 		if (violations.length > 0) {
 			this.renderViolations(violations);
 			return;
 		}
 
 		const component = ComponentFactory.create(this.el, this.ctx, componentData);
-		if (!component) return;
+		if (!component) {
+			renderBlockError(this.el, `Could not create a ${componentData.type} block`);
+			return;
+		}
 
 		this.component = component;
 

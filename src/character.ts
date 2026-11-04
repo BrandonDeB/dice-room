@@ -102,22 +102,30 @@ async function blocksInFile(file: TFile): Promise<BlockLocation[]> {
 		.filter((b): b is BlockLocation => b !== null);
 }
 
+/** Every dicelist block across the character's notes, of any type. */
+export async function findAllBlocks(ctx: MarkdownPostProcessorContext): Promise<BlockMatch[]> {
+	const matches: BlockMatch[] = [];
+	for (const file of getCharacterFiles(ctx) ?? []) {
+		for (const location of await blocksInFile(file)) {
+			matches.push({ file, location, data: location.data });
+		}
+	}
+	return matches;
+}
+
 /** Every block of a type across the character's notes. */
 export async function findBlocksOfType<T = Record<string, unknown>>(
 	ctx: MarkdownPostProcessorContext,
 	type: string,
 ): Promise<BlockMatch<T>[]> {
 	const wanted = normalizeType(type);
-	const matches: BlockMatch<T>[] = [];
+	return (await findAllBlocks(ctx))
+		.filter(match => match.location.type === wanted) as unknown as BlockMatch<T>[];
+}
 
-	for (const file of getCharacterFiles(ctx) ?? []) {
-		for (const location of await blocksInFile(file)) {
-			if (location.type === wanted) {
-				matches.push({ file, location, data: location.data as T });
-			}
-		}
-	}
-	return matches;
+/** Compare two key values (such as modifier names) ignoring case and spacing. */
+export function sameKey(a: unknown, b: unknown): boolean {
+	return String(a ?? '').trim().toLowerCase() === String(b ?? '').trim().toLowerCase();
 }
 
 /** Look up a component that should appear exactly once for this character. */
@@ -154,12 +162,28 @@ export async function invokeAction(
 	args: ActionArgs = {},
 ): Promise<void> {
 	const type = normalizeType(targetType);
-	const handler = ComponentFactory.getMetadata(type)?.actions?.[action];
+	const metadata = ComponentFactory.getMetadata(type);
+	const handler = metadata?.actions?.[action];
 	if (!handler) throw new ActionError(`"${targetType}" has no action named "${action}"`);
 
-	const lookup = await findUniqueBlock(ctx, type);
-	if (lookup.status !== 'found') throw new ActionError(describeLookupProblem(type, lookup));
-	const { file, location: hint } = lookup.match;
+	// Types with a targetKey (like modifiers, by name) can have many blocks per
+	// character; the action's argument of that name picks which one.
+	const key = metadata?.targetKey;
+	const wanted = key ? args[key] : undefined;
+	if (key && (typeof wanted !== 'string' || wanted.trim() === '')) {
+		throw new ActionError(`Missing "${key}" to choose which ${type} to change`);
+	}
+	const isTarget = (b: BlockLocation) => b.type === type && (!key || sameKey(b.data[key], wanted));
+
+	const matches = (await findBlocksOfType(ctx, type)).filter(m => isTarget(m.location));
+	if (matches.length !== 1) {
+		const lookup: UniqueLookup = matches.length === 0
+			? { status: 'missing' }
+			: { status: 'duplicate', matches };
+		const what = key ? `${type} named "${wanted}"` : type;
+		throw new ActionError(describeLookupProblem(what, lookup));
+	}
+	const { file, location: hint } = matches[0];
 
 	// Errors thrown inside vault.process are captured and re-thrown after,
 	// so a rejected action leaves the file untouched.
@@ -170,9 +194,9 @@ export async function invokeAction(
 			const lines = data.split('\n');
 			// Normally the block is still where we found it; scan only if the note changed.
 			const atHint = readBlock(lines, hint.lineStart, hint.lineEnd);
-			const block = atHint?.type === type
+			const block = atHint && isTarget(atHint)
 				? atHint
-				: findBlocks(lines).find(b => b.type === type);
+				: findBlocks(lines).find(isTarget);
 			if (!block) throw new ActionError(`No ${type} found for this character`);
 
 			const doc = parseDocument(lines.slice(block.lineStart + 1, block.lineEnd).join('\n'));

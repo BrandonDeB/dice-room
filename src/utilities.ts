@@ -23,3 +23,18 @@ export function getCharacterFiles(ctx: MarkdownPostProcessorContext): TFile[] | 
 	return characterFiles;
 
 }
+
+/**
+ * True if `file` is one of the notes belonging to the same character as the note
+ * being rendered. Cheaper than getCharacterFiles for checking a single file, such
+ * as one reported by a metadata change event.
+ */
+export function isCharacterFile(ctx: MarkdownPostProcessorContext, file: TFile): boolean {
+	if (file.path === ctx.sourcePath) return true;
+	const app = getApp();
+	const current = app.vault.getAbstractFileByPath(ctx.sourcePath);
+	if (!(current instanceof TFile)) return false;
+	const character = app.metadataCache.getFileCache(current)?.frontmatter?.character;
+	if (character == null) return false;
+	return app.metadataCache.getFileCache(file)?.frontmatter?.character === character;
+}

@@ -224,3 +224,22 @@ If your plugin does not need CSS, delete this file.
 .dicelist-error ul {
 	margin: 4px 0 0;
 }
+
+/* Modifiers */
+.roll-modifiers {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+.roll-modifiers.roll-problem {
+	color: var(--text-error);
+}
+
+.dicelist-error-detail {
+	margin: 4px 0 0;
+	color: var(--text-normal);
+}
+
+.published-modifiers {
+	margin: 0.5em 0;
+}

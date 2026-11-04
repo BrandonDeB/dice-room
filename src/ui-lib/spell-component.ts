@@ -1,3 +1,5 @@
+import { ComponentMetadata } from './base-component'
+import { modifiersFromPublishes } from './published-modifiers'
 import { AttackComponent, AttackAttributes } from './attack-component'
 
 const CastingTime = {
@@ -16,9 +18,10 @@ export interface SpellAttributes extends AttackAttributes {
 
 export class SpellComponent extends AttackComponent {	
 
-	static readonly metadata = {
+	static readonly metadata: ComponentMetadata = {
 		type: "spell",
-		policies: [],
+		policies: ["uniqueModifierNames"],
+		modifiers: modifiersFromPublishes,
 	}
 
 	castingTime: string | undefined;
