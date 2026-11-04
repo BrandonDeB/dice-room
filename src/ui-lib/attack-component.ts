@@ -90,7 +90,7 @@ export abstract class AttackComponent extends BaseComponent<AttackAttributes> im
 			// Right-click: hit rolls offer advantage; damage offers a critical hit.
 			const rollWith = (change: Partial<Roll>) => { if (line.roll) this.onRoll({ ...line.roll, ...change }); };
 			addRollMenu(button.buttonEl, label === 'Damage'
-				? [{ title: 'Roll critical hit', onClick: () => rollWith({ critical: true }) }, modifierChoice(rollWith)]
+				? [{ title: 'Roll critical hit', onClick: () => rollWith({ critical: true }) }, modifierChoice(rollWith, 'damage')]
 				: rollChoices(rollWith));
 		});
 		this.rollLines.push(line);

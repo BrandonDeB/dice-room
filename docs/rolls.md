@@ -125,8 +125,14 @@ Advantage and disadvantage cancel out: with both, the roll is normal.
 
 For a bonus or penalty that only matters right now, such as exhaustion, a spell cast on
 you this turn, or a DM's ruling, right-click the roll and choose **Roll with a modifier...**.
-Type a number like `-4`, dice like `1d4`, or `advantage`, and press Enter to roll. It's added
-to that roll only, on top of any other modifiers, and nothing is saved to your sheet.
+In the dialog:
+
+1. Type a number like `-4` or dice like `1d4`. This is optional.
+2. On d20 rolls, choose **Normal**, **With advantage** or **With disadvantage**.
+   On damage rolls, switch on **Critical hit** to double the damage dice.
+3. Press Enter or Roll.
+
+It applies to that roll only, on top of any other modifiers, and nothing is saved to your sheet.
 
 After an attack roll, a natural 20 is announced as a critical hit, and a natural 1 as a
 miss. **Right-click** the Damage roll and choose **Roll critical hit** to double every

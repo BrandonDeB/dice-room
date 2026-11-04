@@ -217,9 +217,12 @@ export interface RollChange {
 	temporary?: string;
 }
 
-/** "Roll with a modifier...": ask for a value for this roll only, such as -4 or 1d4. */
-export function modifierChoice(roll: (change: RollChange) => void): RollChoice {
-	return { title: 'Roll with a modifier...', onClick: () => new OneRollModifierModal(value => roll({ temporary: value })).open() };
+/**
+ * "Roll with a modifier...": a dialog for this roll only. d20 rolls can also choose
+ * advantage or disadvantage; damage rolls can choose a critical hit.
+ */
+export function modifierChoice(roll: (change: RollChange) => void, kind: 'd20' | 'damage' = 'd20'): RollChoice {
+	return { title: 'Roll with a modifier...', onClick: () => new OneRollModal(roll, kind).open() };
 }
 
 /** The right-click choices for a d20 roll: advantage, disadvantage, or a modifier for this roll. */
@@ -231,28 +234,36 @@ export function rollChoices(roll: (change: RollChange) => void): RollChoice[] {
 	];
 }
 
-/** A small native dialog asking for a modifier for one roll. Enter rolls; bad values are explained. */
-class OneRollModifierModal extends Modal {
-	constructor(private readonly onRoll: (value: string) => void) {
+/**
+ * A small native dialog for one roll: an optional modifier, plus advantage or
+ * disadvantage (d20 rolls) or a critical hit (damage). Enter rolls; bad values are explained.
+ */
+class OneRollModal extends Modal {
+	constructor(private readonly onRoll: (change: RollChange) => void, private readonly kind: 'd20' | 'damage') {
 		super(getApp());
 	}
 
 	onOpen() {
 		this.setTitle('Roll with a modifier');
+		const change: RollChange = {};
 		let value = '';
 		const error = this.contentEl.createDiv({ cls: 'roll-modifiers roll-problem' });
 		const submit = () => {
-			const parsed = parseModifierValue(value);
-			if (!parsed.valid) {
-				error.setText(parsed.reason);
-				return;
+			if (value.trim() !== '') {
+				const parsed = parseModifierValue(value);
+				if (!parsed.valid) {
+					error.setText(parsed.reason);
+					return;
+				}
+				change.temporary = value;
 			}
 			this.close();
-			this.onRoll(value);
+			this.onRoll(change);
 		};
+
 		new Setting(this.contentEl)
 			.setName('Modifier')
-			.setDesc('Added to this roll only: a number like -4, dice like 1d4, or advantage.')
+			.setDesc('Optional, for this roll only: a number like -4 or dice like 1d4.')
 			.addText(text => {
 				text.inputEl.setAttr('aria-label', 'Modifier for this roll');
 				text.onChange(next => { value = next; error.setText(''); });
@@ -260,7 +271,24 @@ class OneRollModifierModal extends Modal {
 					if (event.key === 'Enter') { event.preventDefault(); submit(); }
 				});
 				window.setTimeout(() => text.inputEl.focus(), 0);
-			})
+			});
+
+		if (this.kind === 'd20') {
+			new Setting(this.contentEl)
+				.setName('Roll')
+				.addDropdown(dropdown => dropdown
+					.addOption('', 'Normal')
+					.addOption('advantage', 'With advantage')
+					.addOption('disadvantage', 'With disadvantage')
+					.onChange(choice => { change.advantage = (choice || undefined) as Advantage | undefined; }));
+		} else {
+			new Setting(this.contentEl)
+				.setName('Critical hit')
+				.setDesc('Doubles every damage die.')
+				.addToggle(toggle => toggle.onChange(on => { change.critical = on || undefined; }));
+		}
+
+		new Setting(this.contentEl)
 			.addButton(button => button.setButtonText('Roll').setCta().onClick(submit));
 	}
 
