@@ -1,5 +1,6 @@
 import { MarkdownPostProcessorContext, Notice } from "obsidian";
 import { BlockTarget, invokeAction, previewAction } from "./character";
+import { fireEvent, previewEvent } from "./events";
 import { ActionError, Effect } from "./ui-lib/actions";
 import { DiceNotation } from "./ui-lib/ui-types";
 import { nameList, resolveRollModifiers } from "./modifiers";
@@ -84,6 +85,46 @@ function effectError(effect: Effect, err: unknown): string {
 	return `Could not run ${effect.action} on ${effect.target}`;
 }
 
+/** Effects with `target: event` fire a character event instead of running an action. */
+function isEventEffect(effect: Effect): boolean {
+	return effect.target.trim().toLowerCase() === 'event';
+}
+
+/** The event an event effect fires, e.g. "long rest". Throws ActionError if it isn't valid. */
+function effectEventName(effect: Effect): string {
+	if (effect.action.trim().toLowerCase() !== 'emit') {
+		throw new ActionError(`"event" has no action named "${effect.action}". Use emit.`);
+	}
+	const name = effect.args?.name;
+	if (typeof name !== 'string' || name.trim() === '') throw new ActionError('Missing "name" of the event to fire');
+	return name.trim();
+}
+
+/** Preview one effect: an action on a component, or firing an event. Throws ActionError if it would fail. */
+async function previewEffect(ctx: MarkdownPostProcessorContext, effect: Effect): Promise<EffectPreview> {
+	if (isEventEffect(effect)) {
+		const name = effectEventName(effect);
+		const changes = await previewEvent(ctx, name);
+		// Failing subscriptions are shown but don't stop the roll, as when taking a rest.
+		const details = changes.flatMap(change => change.messages).join('; ');
+		const failing = changes.flatMap(change => change.problems);
+		const couldNot = failing.length > 0 ? ` (could not: ${failing.join('; ')})` : '';
+		return { effect, message: `Triggers ${name}: ${details || 'nothing to change'}${couldNot}`, target: changes[0]?.target };
+	}
+	const preview = await previewAction(ctx, effect.target, effect.action, effect.args ?? {});
+	return { effect, message: preview.message, target: preview.target };
+}
+
+/** Run one effect and return its announcement, if any. Throws ActionError if it fails. */
+async function runEffect(ctx: MarkdownPostProcessorContext, effect: Effect): Promise<string | undefined> {
+	if (isEventEffect(effect)) {
+		const name = effectEventName(effect);
+		const messages = await fireEvent(ctx, name);
+		return `${name.charAt(0).toUpperCase()}${name.slice(1)}: ${messages.join(' ') || 'nothing changed.'}`;
+	}
+	return invokeAction(ctx, effect.target, effect.action, effect.args ?? {});
+}
+
 /**
  * Work out what each of a roll's effects would do, without changing anything.
  * Rolls show this before they're made, and performRoll checks it before running.
@@ -92,8 +133,7 @@ export async function previewEffects(ctx: MarkdownPostProcessorContext, roll: Ro
 	const previews: EffectPreview[] = [];
 	for (const effect of roll.effects ?? []) {
 		try {
-			const preview = await previewAction(ctx, effect.target, effect.action, effect.args ?? {});
-			previews.push({ effect, message: preview.message, target: preview.target });
+			previews.push(await previewEffect(ctx, effect));
 		} catch (err) {
 			previews.push({ effect, problem: effectError(effect, err) });
 		}
@@ -135,7 +175,7 @@ export async function performRoll(
 	const announcements: string[] = [];
 	for (const effect of roll.effects ?? []) {
 		try {
-			const message = await invokeAction(ctx, effect.target, effect.action, effect.args ?? {});
+			const message = await runEffect(ctx, effect);
 			if (message) announcements.push(message);
 		} catch (err) {
 			new Notice(effectError(effect, err));

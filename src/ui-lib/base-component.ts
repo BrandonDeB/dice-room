@@ -2,8 +2,11 @@ import { HoverParent, HoverPopover, MarkdownPostProcessorContext, MarkdownRender
 import { getApp } from "../app-provider";
 import { isCharacterFile } from "../utilities";
 import { errorMessage, renderBlockError } from "./block-error";
+import { createCallout } from "./native";
+import { checkSubscriptions } from "../events";
 import { Persistable, Rollable } from "./capabilities";
-import { ActionMap } from "./actions";
+import { ActionMap, ActionResult } from "./actions";
+import { YamlStep } from "./capabilities";
 import type { ModifierPublisher } from "../modifiers";
 
 export interface BaseAttributes {
@@ -38,6 +41,18 @@ export interface ComponentMetadata {
 	 * argument, and the "uniqueEntryNames" policy keeps names unique per character.
 	 */
 	entryNames?: (attributes: any) => string[];
+	/**
+	 * Reacting to a character event such as "long rest" or "short rest": the YAML edits
+	 * to make to this block, or none. Events are fired by the rest component and by roll
+	 * effects (`target: event`).
+	 */
+	onEvent?: (attributes: any, event: string) => YamlStep[];
+	/**
+	 * Describes what an event did, or would do, to this block: a preview before
+	 * ("Refills Ki (1 of 4 left)") and an announcement after ("Refilled Ki."), from one
+	 * function, like action descriptions. `event` is the event's name.
+	 */
+	describeEvent?: (result: ActionResult & { event: string }) => string;
 	modifiers?: ModifierPublisher;
 }
 
@@ -80,6 +95,20 @@ export abstract class BaseComponent<T extends BaseAttributes> extends MarkdownRe
 
 	onload() {
 		this.safely(() => this.render());
+		this.warnAboutSubscriptions();
+	}
+
+	/** Any component can subscribe to events with an `on` list; show its mistakes at the top. */
+	private warnAboutSubscriptions() {
+		const metadata = (this.constructor as ComponentConstructor).metadata;
+		if (!metadata) return;
+		const problems = checkSubscriptions(metadata, this.attributes as unknown as Record<string, unknown>);
+		if (problems.length === 0) return;
+		const content = createCallout(this.containerEl, 'warning', 'Problems with this block\'s event subscriptions');
+		const list = content.createEl('ul');
+		for (const problem of problems) list.createEl('li', { text: problem });
+		const callout = content.parentElement;
+		if (callout) this.containerEl.prepend(callout);
 	}
 
 	/** Run drawing code. If it throws, the block shows the error instead of vanishing. */

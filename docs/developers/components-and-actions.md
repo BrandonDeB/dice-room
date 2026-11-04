@@ -303,3 +303,40 @@ To keep a displayed total current, resolve again when the character changes.
 `BaseComponent.onCharacterChange(callback)` runs a callback, debounced, whenever any of
 the character's notes changes in Obsidian's metadata cache, and stops when the component
 unloads. `AttackComponent.refreshModifiers` in `src/ui-lib/attack-component.ts` is an example.
+
+## Events: rests and other moments
+
+Character events, such as "long rest" or "short rest", let many components react to one
+moment. Event names are compared ignoring case and extra spaces.
+
+### Subscribing
+
+Add `onEvent` to the metadata. Given the block's data and the event's name, it returns the
+YAML steps to apply to that block, or none. Add `describeEvent` for the preview and the
+announcement: one function, with `applied` telling the tense, like action descriptions.
+
+```ts
+static readonly metadata: ComponentMetadata = {
+	type: "consumable",
+	onEvent: (attrs, event) => /* steps refilling entries whose refill lists the event */,
+	describeEvent: ({ before, applied, event }) =>
+		applied ? "Refilled Ki." : "Refills Ki (1 of 4 left)",
+};
+```
+
+Components don't need `onEvent` to be subscribable: any block whose component has
+actions can list subscriptions in an `on` list, and the block runs its own actions when
+the event fires. See [events](../events.md#subscribing-any-component). `checkSubscriptions`
+reports mistakes in an `on` list, and the base component shows them on every card.
+
+### Firing
+
+`reactToEvent` in `src/events.ts` works out one block's reaction on plain data: its
+component's `onEvent`, then each matching `on` entry in order. Failing entries become
+problems while the rest still apply. Both `previewEvent(ctx, name)`, which lists what an
+event would change without saving, and `fireEvent(ctx, name)`, which applies it, use it. Firing writes each of the
+character's notes once, from its current text, editing blocks from the bottom up so their
+positions stay valid, and returns the announcements.
+
+Events are fired by the [rest component](../components/rest.md) and by roll effects with
+`target: event` and `action: emit`, handled in `src/roll.ts`.

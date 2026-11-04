@@ -15,6 +15,7 @@ interactive character sheets inside your notes.
 2. [Character sheets](character-sheets.md): how `dicelist` blocks work and how notes are linked to a character.
 3. [Rolls, effects and modifiers](rolls.md): writing rolls, having them spend ammo or change other
    components, and adding bonuses like Bless.
+4. [Events](events.md): rests and other moments, and how blocks subscribe to them.
 
 ## Component reference
 
@@ -24,6 +25,7 @@ interactive character sheets inside your notes.
 - [Inventory](components/inventory.md): items and quantities that other components can change.
 - [Modifier](components/modifier.md): a named bonus with an on/off switch that rolls can include.
 - [Consumables](components/consumable.md): spell slots and other limited uses that refill.
+- [Rest](components/rest.md): short and long rest buttons that refill what's subscribed.
 
 ## For developers
 

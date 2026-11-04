@@ -22,7 +22,8 @@ function toModifier(attrs: ModifierAttributes): Modifier[] {
  * would-be result as `after` too, so both read the new state from it.
  */
 const describeSwitch = ({ after, args, applied }: ActionResult<ModifierAttributes>) => {
-	const name = typeof args.name === 'string' ? args.name : 'modifier';
+	// From an effect the name comes in args; from the block's own `on` list, use its name.
+	const name = typeof args.name === 'string' ? args.name : (typeof after.name === 'string' ? after.name : 'modifier');
 	const state = after.active === true ? 'on' : 'off';
 	return applied ? `Turned ${name} ${state}.` : `Turns ${name} ${state}`;
 };

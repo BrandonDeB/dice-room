@@ -39,7 +39,12 @@ Each consumable has:
 | `max` | Yes | How many there are when full. Whole number, 1 or more. |
 | `used` | No | How many have been used since the last refill. Defaults to 0. The buttons save this for you. |
 | `description` | No | Shown under the name. |
-| `refill` | No | When it comes back, shown as "Refills on long rest". For your reference only. |
+| `refill` | No | The [event](../events.md) or events that refill it, such as `long rest` or `[short rest, long rest]`. |
+| `gain` | No | Events with how many come back, such as `{ dawn: 2 }`. Never goes above the max. |
+| `lose` | No | Events with how many are lost, such as `{ long rest: 1 }`. Never goes below zero. |
+
+If one event does several of these, they apply in order: refill, then gain, then lose.
+Like any component, a consumable block can also subscribe with an [`on` list](../events.md#subscribing-any-component).
 
 A character can have consumables in several blocks and notes, but each name only once.
 If two share a name, each block shows an error with links to the others.

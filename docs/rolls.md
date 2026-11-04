@@ -50,6 +50,21 @@ Each effect has:
 - `args`: the action's arguments.
 
 The target must be found exactly once among the character's notes.
+
+### Firing events
+
+An effect can fire a character event instead, such as a short or long rest, by using
+`target: event` and `action: emit` with the event's `name`. Everything subscribed to that
+event reacts, as when you take a [rest](components/rest.md): consumables refill if the
+event is in their `refill` list.
+
+```yaml
+effects:
+  - target: event
+    action: emit
+    args:
+      name: long rest
+```
 See [linking notes to a character](character-sheets.md#linking-notes-to-a-character).
 
 ### Before you click
