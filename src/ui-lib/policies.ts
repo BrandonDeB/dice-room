@@ -1,83 +1,64 @@
-import { MarkdownPostProcessorContext } from "obsidian";
-import { BlockMatch, describeLookupProblem, findBlocksOfType, findUniqueBlock } from "../character";
-import { BaseAttributes, ComponentMetadata, Policy } from "./base-component";
-import { findModifiers, normalizeName } from "../modifiers";
+import { BlockMatch, hasComponent } from "../character";
+import { CharacterData } from "../character-data";
+import { componentsOf } from "./component";
+import { normalizeName } from "../modifiers";
 
-/** Why a component may not be shown, with the blocks involved so the user can fix it. */
+/** A rule a card breaks, with the blocks involved so the user can fix it. */
 export interface PolicyViolation {
 	message: string;
 	blocks: BlockMatch[];
 }
 
-type PolicyCheck = (
-	metadata: ComponentMetadata,
-	ctx: MarkdownPostProcessorContext,
-	attributes: BaseAttributes,
-) => Promise<PolicyViolation | null>;
+/** Blocks holding a named thing, counting repeats within one block. */
+function duplicates(holders: BlockMatch[], name: string, what: string): PolicyViolation | null {
+	if (holders.length < 2) return null;
+	const notes = [...new Set(holders.map(block => block.file.basename))].join(', ');
+	return {
+		message: `${holders.length} ${what} share the name "${name}" (in ${notes}). Rename or remove all but one.`,
+		blocks: [...new Set(holders)],
+	};
+}
 
-/** One check per policy. Adding a policy means adding an entry here. */
-const POLICY_CHECKS: Record<Policy, PolicyCheck> = {
-	/** At most one block of this type per character (or per note, without a character). */
-	unique: async (metadata, ctx) => {
-		const lookup = await findUniqueBlock(ctx, metadata.type);
-		if (lookup.status !== 'duplicate') return null;
-		return {
-			message: describeLookupProblem(metadata.type, lookup),
-			blocks: lookup.matches,
-		};
-	},
-
-	/** No other modifier of the character may share a name with one this block publishes. */
-	uniqueModifierNames: async (metadata, ctx, attributes) => {
-		const own = (metadata.modifiers?.(attributes) ?? []).map(m => normalizeName(m.name));
-		if (own.length === 0) return null;
-
-		const published = await findModifiers(ctx);
-		for (const name of own) {
-			const sameName = published.filter(m => normalizeName(m.name) === name);
-			if (sameName.length < 2) continue;
-			const notes = [...new Set(sameName.map(m => m.file.basename))].join(', ');
-			return {
-				message: `${sameName.length} modifiers are named "${sameName[0].name}" (in ${notes}). Rename or remove all but one.`,
-				blocks: sameName.map(m => ({ file: m.file, location: m.location, data: m.location.data })),
-			};
-		}
-		return null;
-	},
-
-	/** No two entries of this type (in any of the character's blocks) share a name. */
-	uniqueEntryNames: async (metadata, ctx, attributes) => {
-		const entryNames = metadata.entryNames;
-		if (!entryNames) return null;
-		const own = entryNames(attributes);
-		if (own.length === 0) return null;
-
-		const blocks = await findBlocksOfType(ctx, metadata.type);
-		for (const original of own) {
-			const name = normalizeName(original);
-			// Count every entry with this name, including repeats within one block.
-			const holders = blocks.flatMap(block =>
-				entryNames(block.data).filter(n => normalizeName(n) === name).map(() => block));
-			if (holders.length < 2) continue;
-			const label = (metadata.label ?? metadata.type).toLowerCase();
-			return {
-				message: `${holders.length} ${label} share the name "${original}". Rename or remove all but one.`,
-				blocks: [...new Set(holders)],
-			};
-		}
-		return null;
-	},
-};
-
-export async function checkPolicies(
-	metadata: ComponentMetadata,
-	ctx: MarkdownPostProcessorContext,
-	attributes: BaseAttributes,
-): Promise<PolicyViolation[]> {
+/**
+ * The character-wide rules a card's components must keep: components marked unique
+ * appear on one card only, and entries, modifiers and values each use a name once.
+ */
+export function checkPolicies(character: CharacterData, data: Record<string, unknown>): PolicyViolation[] {
 	const violations: PolicyViolation[] = [];
-	for (const policy of metadata.policies ?? []) {
-		const violation = await POLICY_CHECKS[policy](metadata, ctx, attributes);
-		if (violation) violations.push(violation);
+	const { blocks } = character;
+
+	for (const component of componentsOf(data)) {
+		if (component.unique) {
+			const holders = blocks.filter(block => hasComponent(block.data, component.key));
+			if (holders.length > 1) {
+				const notes = [...new Set(holders.map(block => block.file.basename))].join(', ');
+				violations.push({
+					message: `This character has ${holders.length} cards with ${component.label.toLowerCase()} (in ${notes}). Keep only one.`,
+					blocks: holders,
+				});
+			}
+		}
+
+		const entryNames = component.entryNames;
+		if (entryNames) {
+			for (const own of entryNames(data[component.key])) {
+				const holders = blocks.flatMap(block => hasComponent(block.data, component.key)
+					? entryNames(block.data[component.key]).filter(name => normalizeName(name) === normalizeName(own)).map(() => block)
+					: []);
+				const violation = duplicates(holders, own, component.label.toLowerCase());
+				if (violation) violations.push(violation);
+			}
+		}
+
+		for (const modifier of component.modifiers?.(data[component.key]) ?? []) {
+			const holders = character.modifiers
+				.filter(other => normalizeName(other.name) === normalizeName(modifier.name))
+				.map(other => blocks.find(block => block.file === other.file && block.location.lineStart === other.lineStart)!)
+				.filter(Boolean);
+			const violation = duplicates(holders, modifier.name, 'modifiers');
+			if (violation) violations.push(violation);
+		}
 	}
-	return violations;
+	// A modifier's name can break the rule both as an entry and as a published modifier.
+	return violations.filter((violation, i) => violations.findIndex(other => other.message === violation.message) === i);
 }

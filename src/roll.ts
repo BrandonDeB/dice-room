@@ -2,83 +2,55 @@ import { MarkdownPostProcessorContext, Notice } from "obsidian";
 import { BlockTarget, invokeAction, previewAction } from "./character";
 import { fireEvent, previewEvent } from "./events";
 import { ActionError, Effect } from "./ui-lib/actions";
-import { DiceNotation } from "./ui-lib/ui-types";
-import { Advantage, nameList, resolveRollModifiers } from "./modifiers";
+import { Advantage, hasD20, nameList, resolveRollModifiers } from "./modifiers";
+import { CharacterData, loadCharacter } from "./character-data";
+import { FormulaError, usesRollVariables } from "./formula";
 
 /**
- * A single clickable roll: the dice to throw, plus effects on other
- * components that happen when it is used (spending ammo, a spell slot, ...).
- * Any component that rolls dice describes its rolls this way.
+ * One entry of a card's `rolls` list: dice to throw, plus effects on other components
+ * when it's used (spending ammo, a spell slot, ...). Without dice, its button only runs
+ * the effects, like casting Goodberry.
  */
 export interface Roll {
-	notation: DiceNotation;
+	name: string;
+	/** A formula, like "1d20 + {{dex mod}}". */
+	dice?: unknown;
 	effects?: Effect[];
 	modifiers?: string[];
 	categories?: string[];
+	description?: string;
+	/** The button's text. Defaults to Roll, or Use without dice. */
+	button?: string;
 	/** Chosen when rolling: roll the d20 twice and keep the higher or lower. */
 	advantage?: Advantage;
-	/** Chosen when rolling damage after a critical hit: every die is doubled. */
+	/** Chosen when rolling: every die is doubled, as for a critical hit. */
 	critical?: boolean;
-	/** A modifier for this roll only, typed when rolling, such as -4 for exhaustion. */
+	/** A modifier for this roll only, typed when rolling, such as -4. */
 	temporary?: string;
 }
 
-/**
- * How a roll is written in YAML. Either a plain dice string:
- *   hitRoll: 1d20+5
- * or an object when it has effects, modifiers or extra categories:
- *   hitRoll:
- *     dice: 1d20+5
- *     effects:
- *       - { target: inventory, action: remove, args: { item: Arrows } }
- *     modifiers: [Archery]
- *     categories: [ranged]
- */
-export type RollField = string | number | {
-	dice: string | number;
-	effects?: Effect[];
-	modifiers?: string[];
-	categories?: string[];
-};
-
-/**
- * Normalize a YAML roll field. Returns null if it is missing or malformed.
- * `defaultCategories` are the categories the component gives this roll (such as
- * ["attack", "weapon"]); the YAML can add more.
- */
-export function parseRoll(field: unknown, defaultCategories: string[] = []): Roll | null {
-	if (typeof field === 'string' || typeof field === 'number') {
-		return { notation: new DiceNotation(String(field)), categories: [...defaultCategories] };
-	}
-
-	if (field && typeof field === 'object') {
-		const { dice, effects, modifiers, categories } =
-			field as { dice?: unknown; effects?: unknown; modifiers?: unknown; categories?: unknown };
-		if (typeof dice !== 'string' && typeof dice !== 'number') return null;
-		return {
-			notation: new DiceNotation(String(dice)),
-			effects: Array.isArray(effects) ? parseEffects(effects) : undefined,
-			modifiers: nameList(modifiers),
-			categories: [...new Set([...defaultCategories, ...nameList(categories)])],
-		};
-	}
-	return null;
+/** Read one entry of a `rolls` list, or a message saying what's wrong with it. */
+export function parseRoll(entry: unknown): Roll | string {
+	if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return 'Each roll needs a name, and dice or effects.';
+	const { name, dice, effects, modifiers, categories, description, button } = entry as Record<string, unknown>;
+	if (typeof name !== 'string' || name.trim() === '') return 'Each roll needs a name.';
+	if (dice != null && typeof dice !== 'string' && typeof dice !== 'number') return `"${name}" has dice that aren't a formula, like 1d20+3.`;
+	const parsedEffects = parseEffects(effects);
+	if (dice == null && parsedEffects.length === 0) return `"${name}" needs dice, effects, or both.`;
+	return {
+		name: name.trim(),
+		dice: dice ?? undefined,
+		effects: parsedEffects,
+		modifiers: nameList(modifiers),
+		categories: nameList(categories),
+		description: typeof description === 'string' ? description : undefined,
+		button: typeof button === 'string' && button.trim() !== '' ? button.trim() : undefined,
+	};
 }
 
-/**
- * A roll a component builds itself, such as a check or a save, with categories so
- * modifiers can apply, and any extra settings for it from the block's `rolls` map:
- *   rolls:
- *     Stealth:
- *       modifiers: [Cloak of Elvenkind]
- * Roll names are matched ignoring case.
- */
-export function generatedRoll(dice: string, categories: string[], rolls: unknown, name: string): Roll {
-	const settings = rolls && typeof rolls === 'object' && !Array.isArray(rolls)
-		? Object.entries(rolls).find(([key]) => key.trim().toLowerCase() === name.toLowerCase())?.[1]
-		: undefined;
-	const extra = settings && typeof settings === 'object' ? settings : {};
-	return parseRoll({ ...extra, dice }, categories) ?? { notation: new DiceNotation(dice), categories };
+/** Whether the roll throws dice, rather than only running effects. */
+export function hasDice(roll: Roll): boolean {
+	return roll.dice != null && String(roll.dice).trim() !== '';
 }
 
 function isEffect(value: unknown): value is Effect {
@@ -86,7 +58,11 @@ function isEffect(value: unknown): value is Effect {
 	return !!e && typeof e.target === 'string' && typeof e.action === 'string';
 }
 
-/** Where dice actually get thrown. Implemented by the plugin using the Dice view. */
+/** The effects a YAML list holds, skipping entries without a target and action. */
+export function parseEffects(value: unknown): Effect[] {
+	return Array.isArray(value) ? value.filter(isEffect) : [];
+}
+
 /** What a roll came to: its total, and the d20 that counted if there was one. */
 export interface RollOutcome {
 	total: number;
@@ -117,6 +93,7 @@ export function rollOutcome(notation: {
 	return { total: total + (notation.op === '-' ? -constant : constant), natural };
 }
 
+/** Where dice actually get thrown. Implemented by the plugin using the Dice view. */
 export interface DiceRoller {
 	ready(): boolean;
 	/** Throw the dice. Returns what they came to, or null if it isn't known. */
@@ -126,9 +103,16 @@ export interface DiceRoller {
 /** Write `$total` as an effect argument to use the roll's total, e.g. heal by what was rolled. */
 const TOTAL = '$total';
 
-/** Effects that use the roll's total run after the dice instead of before. */
+/** Roll results conditions and arguments can use. */
+type RollVariables = { total?: number; natural?: number };
+
 function usesTotal(effect: Effect): boolean {
 	return Object.values(effect.args ?? {}).some(value => value === TOTAL);
+}
+
+/** Effects that use the roll's result run after the dice instead of before. */
+function afterRoll(effect: Effect): boolean {
+	return usesTotal(effect) || usesRollVariables(effect.if);
 }
 
 /** The effect with `$total` replaced by a number. */
@@ -148,7 +132,7 @@ export interface EffectPreview {
 
 /** A user-facing message for anything an effect throws. */
 function effectError(effect: Effect, err: unknown): string {
-	if (err instanceof ActionError) return err.message;
+	if (err instanceof ActionError || err instanceof FormulaError) return err.message;
 	console.error(err);
 	return `Could not run ${effect.action} on ${effect.target}`;
 }
@@ -168,7 +152,7 @@ function effectEventName(effect: Effect): string {
 	return name.trim();
 }
 
-/** Preview one effect: an action on a component, or firing an event. Throws ActionError if it would fail. */
+/** Preview one effect: an action on a component, or firing an event. Throws if it would fail. */
 async function previewEffect(ctx: MarkdownPostProcessorContext, effect: Effect): Promise<EffectPreview> {
 	if (isEventEffect(effect)) {
 		const name = effectEventName(effect);
@@ -199,24 +183,40 @@ async function runEffect(ctx: MarkdownPostProcessorContext, effect: Effect): Pro
 	return invokeAction(ctx, effect.target, effect.action, effect.args ?? {});
 }
 
-/** The effects a YAML list holds, skipping entries without a target and action. */
-export function parseEffects(value: unknown): Effect[] {
-	return Array.isArray(value) ? value.filter(isEffect) : [];
+/** Whether an effect's `if` holds. Effects without one always run. */
+function conditionHolds(character: CharacterData, effect: Effect, variables: RollVariables = {}): boolean {
+	return effect.if == null || character.condition(effect.if, variables);
 }
 
 /**
- * Work out what each effect would do, without changing anything. Rolls and Use
- * buttons show this first, and performRoll and performEffects check it before running.
- * Without a roll (`rolled: false`), an effect using the total can't run.
+ * Work out what each effect would do, without changing anything. Rolls show this first,
+ * and performRoll checks it before running. Effects whose `if` doesn't hold are left
+ * out. An effect whose `if` needs the roll's result says when it will happen, and can't
+ * stop the roll. Without a roll (`rolled: false`), effects using the result can't run.
  */
-export async function previewEffects(ctx: MarkdownPostProcessorContext, effects: Effect[] | undefined, rolled = true): Promise<EffectPreview[]> {
+export async function previewEffects(
+	ctx: MarkdownPostProcessorContext,
+	character: CharacterData,
+	effects: Effect[] | undefined,
+	rolled = true,
+): Promise<EffectPreview[]> {
 	const previews: EffectPreview[] = [];
 	for (const effect of effects ?? []) {
-		if (!rolled && usesTotal(effect)) {
-			previews.push({ effect, problem: `${effect.action} uses ${TOTAL}, but nothing is rolled` });
+		if (!rolled && afterRoll(effect)) {
+			previews.push({ effect, problem: `${effect.action} uses the roll's result, but nothing is rolled` });
 			continue;
 		}
 		try {
+			if (usesRollVariables(effect.if)) {
+				try {
+					const preview = await previewEffect(ctx, effect);
+					previews.push({ ...preview, message: `If ${effect.if}: ${preview.message ?? effect.action}` });
+				} catch (err) {
+					previews.push({ effect, message: `If ${effect.if}: ${effect.action} (can't now: ${effectError(effect, err)})` });
+				}
+				continue;
+			}
+			if (!conditionHolds(character, effect)) continue;
 			previews.push(await previewEffect(ctx, effect));
 		} catch (err) {
 			previews.push({ effect, problem: effectError(effect, err) });
@@ -226,12 +226,12 @@ export async function previewEffects(ctx: MarkdownPostProcessorContext, effects:
 }
 
 /**
- * Check every effect, then run those that don't need a total. Returns their
+ * Check every effect, then run those that don't need the roll's result. Returns their
  * announcements, or null after a Notice saying why nothing (or not all) ran.
  * Checking first means a roll that would fail partway doesn't spend anything.
  */
-async function runImmediateEffects(ctx: MarkdownPostProcessorContext, effects: Effect[], rolled: boolean): Promise<string[] | null> {
-	const problems = (await previewEffects(ctx, effects, rolled))
+async function runImmediateEffects(ctx: MarkdownPostProcessorContext, character: CharacterData, effects: Effect[], rolled: boolean): Promise<string[] | null> {
+	const problems = (await previewEffects(ctx, character, effects, rolled))
 		.map(preview => preview.problem)
 		.filter((problem): problem is string => !!problem);
 	if (problems.length > 0) {
@@ -239,8 +239,9 @@ async function runImmediateEffects(ctx: MarkdownPostProcessorContext, effects: E
 		return null;
 	}
 	const announcements: string[] = [];
-	for (const effect of effects.filter(effect => !usesTotal(effect))) {
+	for (const effect of effects.filter(effect => !afterRoll(effect))) {
 		try {
+			if (!conditionHolds(character, effect)) continue;
 			const message = await runEffect(ctx, effect);
 			if (message) announcements.push(message);
 		} catch (err) {
@@ -251,9 +252,10 @@ async function runImmediateEffects(ctx: MarkdownPostProcessorContext, effects: E
 	return announcements;
 }
 
-/** Run effects with no dice, like casting Goodberry, and announce what happened. */
+/** Run a roll's effects with no dice, like casting Goodberry, and announce what happened. */
 export async function performEffects(ctx: MarkdownPostProcessorContext, effects: Effect[]): Promise<void> {
-	const announcements = await runImmediateEffects(ctx, effects, false);
+	const character = await loadCharacter(ctx);
+	const announcements = await runImmediateEffects(ctx, character, effects, false);
 	if (announcements && announcements.length > 0) new Notice(announcements.join('\n'));
 }
 
@@ -262,34 +264,39 @@ export async function performRoll(
 	roll: Roll,
 	roller: DiceRoller,
 ): Promise<void> {
+	if (!hasDice(roll)) {
+		await performEffects(ctx, roll.effects ?? []);
+		return;
+	}
 	if (!roller.ready()) return;
 
-	const modifiers = await resolveRollModifiers(ctx, roll);
+	const character = await loadCharacter(ctx);
+	const modifiers = resolveRollModifiers(character, roll);
 	if (modifiers.problems.length > 0) {
 		new Notice(modifiers.problems.join(' '));
 		return;
 	}
 
 	const effects = roll.effects ?? [];
-	const announcements = await runImmediateEffects(ctx, effects, true);
+	const announcements = await runImmediateEffects(ctx, character, effects, true);
 	if (!announcements) return;
 
 	const outcome = roller.roll(modifiers.notation);
 	const total = outcome?.total ?? null;
 
-	// A natural 20 on an attack is a critical hit; a natural 1 always misses.
-	if (roll.categories?.includes('attack')) {
-		if (outcome?.natural === 20) announcements.unshift('Critical hit! Right-click the Damage roll and choose "Roll critical hit".');
-		if (outcome?.natural === 1) announcements.unshift('Natural 1: the attack misses.');
+	if (hasD20(modifiers.notation)) {
+		if (outcome?.natural === 20) announcements.unshift('Natural 20!');
+		if (outcome?.natural === 1) announcements.unshift('Natural 1.');
 	}
 
-	// Effects using the total (healing by what was rolled) run once it is known.
-	for (const effect of effects.filter(usesTotal)) {
+	// Effects using the result (healing by what was rolled) run once it is known.
+	for (const effect of effects.filter(afterRoll)) {
 		if (total === null) {
 			announcements.push(`Could not read the roll's total, so ${effect.action} was skipped.`);
 			continue;
 		}
 		try {
+			if (!conditionHolds(character, effect, { total, natural: outcome?.natural })) continue;
 			const message = await runEffect(ctx, withTotal(effect, total));
 			if (message) announcements.push(message);
 		} catch (err) {

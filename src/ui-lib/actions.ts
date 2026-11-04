@@ -46,9 +46,12 @@ export function getAction(map: ActionMap | undefined, name: string): ActionDefin
 
 /** A request, usually declared in YAML, to run an action on another component. */
 export interface Effect {
+	/** The component to act on, such as `inventory`, or `event` to fire an event. */
 	target: string;
 	action: string;
 	args?: ActionArgs;
+	/** Only run when this holds, such as `$total >= 10` or `{{exhaustion}} > 0`. */
+	if?: string;
 }
 
 /** An expected failure whose message is safe to show the user. */

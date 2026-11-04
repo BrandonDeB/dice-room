@@ -2,13 +2,14 @@ import { MarkdownPostProcessorContext, TFile } from "obsidian";
 import { parse as yamlParse, parseDocument } from "yaml";
 import { getApp } from "./app-provider";
 import { getCharacterFiles } from "./utilities";
-import { ComponentFactory } from "./ui-lib/base-component";
-import { ActionArgs, ActionDefinition, ActionError, applyStepsToData, applyYamlSteps, getAction } from "./ui-lib/actions";
+import { blockAction, getComponent } from "./ui-lib/component";
+import { ActionArgs, ActionDefinition, ActionError, applyStepsToData, applyYamlSteps } from "./ui-lib/actions";
 import { YamlStep } from "./ui-lib/capabilities";
 
 export interface BlockLocation {
 	lineStart: number;
 	lineEnd: number;
+	/** The block's `type` tag, lower case, or "" without one. It's only a label. */
 	type: string;
 	data: Record<string, unknown>;
 }
@@ -37,8 +38,8 @@ function readBlock(lines: string[], lineStart: number, lineEnd: number): BlockLo
 
 	try {
 		const data = yamlParse(lines.slice(lineStart + 1, lineEnd).join('\n'));
-		if (data && typeof data.type === 'string') {
-			return { lineStart, lineEnd, type: normalizeType(data.type), data };
+		if (data && typeof data === 'object' && !Array.isArray(data)) {
+			return { lineStart, lineEnd, type: typeof data.type === 'string' ? normalizeType(data.type) : '', data };
 		}
 	} catch {
 		// Malformed YAML: not a valid target.
@@ -110,14 +111,14 @@ export async function findAllBlocks(ctx: MarkdownPostProcessorContext): Promise<
 	return matches;
 }
 
-/** Every block of a type across the character's notes. */
-export async function findBlocksOfType<T = Record<string, unknown>>(
-	ctx: MarkdownPostProcessorContext,
-	type: string,
-): Promise<BlockMatch<T>[]> {
-	const wanted = normalizeType(type);
-	return (await findAllBlocks(ctx))
-		.filter(match => match.location.type === wanted) as unknown as BlockMatch<T>[];
+/** Every block that has a component, such as every block with an `inventory`. */
+export async function findBlocksWith(ctx: MarkdownPostProcessorContext, key: string): Promise<BlockMatch[]> {
+	return (await findAllBlocks(ctx)).filter(match => hasComponent(match.data, key));
+}
+
+/** Whether a block's YAML has this component's key, even if it's empty. */
+export function hasComponent(data: Record<string, unknown>, key: string): boolean {
+	return Object.prototype.hasOwnProperty.call(data ?? {}, key);
 }
 
 /** Compare two key values (such as modifier names) ignoring case and spacing. */
@@ -125,30 +126,19 @@ export function sameKey(a: unknown, b: unknown): boolean {
 	return String(a ?? '').trim().toLowerCase() === String(b ?? '').trim().toLowerCase();
 }
 
-/** Look up a component that should appear exactly once for this character. */
-export async function findUniqueBlock<T = Record<string, unknown>>(
-	ctx: MarkdownPostProcessorContext,
-	type: string,
-): Promise<UniqueLookup<T>> {
-	const matches = await findBlocksOfType<T>(ctx, type);
-	if (matches.length === 0) return { status: 'missing' };
-	if (matches.length > 1) return { status: 'duplicate', matches };
-	return { status: 'found', match: matches[0] };
-}
-
 /** A user-facing explanation for a failed unique lookup. */
-export function describeLookupProblem(type: string, lookup: UniqueLookup<unknown>): string {
-	if (lookup.status === 'missing') return `No ${type} found for this character`;
+export function describeLookupProblem(what: string, lookup: UniqueLookup<unknown>): string {
+	if (lookup.status === 'missing') return `No ${what} found for this character`;
 	if (lookup.status === 'duplicate') {
 		const notes = [...new Set(lookup.matches.map(m => m.file.basename))].join(', ');
-		return `This character has ${lookup.matches.length} ${type} blocks (in ${notes}). Keep only one.`;
+		return `This character has ${lookup.matches.length} cards with ${what} (in ${notes}). Keep only one.`;
 	}
 	return '';
 }
 
 /** Where an action will run: its definition, and the block it targets. */
 interface ActionTarget {
-	type: string;
+	key: string;
 	definition: ActionDefinition;
 	file: TFile;
 	hint: BlockLocation;
@@ -164,45 +154,41 @@ export interface BlockTarget {
 
 /**
  * Find the action and the one block it should change among the character's notes.
+ * The target is a component key, like `inventory`. Components holding named entries
+ * (consumables, values, modifiers) pick the block holding the entry named by `name`.
  * Shared by previews and real runs, so both pick the same target.
  * Throws ActionError with a user-facing message if that isn't possible.
  */
 async function resolveActionTarget(
 	ctx: MarkdownPostProcessorContext,
-	targetType: string,
+	target: string,
 	action: string,
 	args: ActionArgs,
 ): Promise<ActionTarget> {
-	const type = normalizeType(targetType);
-	const metadata = ComponentFactory.getMetadata(type);
-	const definition = getAction(metadata?.actions, action);
-	if (!definition) throw new ActionError(`"${targetType}" has no action named "${action}"`);
+	const key = target.trim();
+	const component = getComponent(key);
+	if (!component) throw new ActionError(`There's no component called "${target}"`);
+	const definition = blockAction(component, action);
+	if (!definition) throw new ActionError(`${component.label} has no action named "${action}"`);
 
-	// Types with a targetKey (like modifiers, by name) can have many blocks per
-	// character; the action's argument of that name picks which one. Types with
-	// entryNames (like consumables) pick the block holding the entry named by `name`.
-	const key = metadata?.targetKey ?? (metadata?.entryNames ? 'name' : undefined);
-	const wanted = key ? args[key] : undefined;
-	if (key && (typeof wanted !== 'string' || wanted.trim() === '')) {
-		throw new ActionError(`Missing "${key}" to choose which ${type} to change`);
+	const entryNames = component.entryNames;
+	const wanted = entryNames ? args.name : undefined;
+	if (entryNames && (typeof wanted !== 'string' || wanted.trim() === '')) {
+		throw new ActionError(`Missing "name" to choose which of the ${component.label.toLowerCase()} to change`);
 	}
-	const holds = (b: BlockLocation) => metadata?.targetKey
-		? sameKey(b.data[metadata.targetKey], wanted)
-		: metadata?.entryNames
-			? metadata.entryNames(b.data).some(name => sameKey(name, wanted))
-			: true;
-	const isTarget = (b: BlockLocation) => b.type === type && holds(b);
+	const isTarget = (b: BlockLocation) => hasComponent(b.data, key) &&
+		(!entryNames || entryNames(b.data[key]).some(name => sameKey(name, wanted)));
 
-	const matches = (await findBlocksOfType(ctx, type)).filter(m => isTarget(m.location));
+	const matches = (await findAllBlocks(ctx)).filter(m => isTarget(m.location));
 	if (matches.length !== 1) {
 		const lookup: UniqueLookup = matches.length === 0
 			? { status: 'missing' }
 			: { status: 'duplicate', matches };
-		const what = key ? `${type} named "${wanted}"` : type;
+		const what = entryNames ? `${component.label.toLowerCase()} named "${wanted}"` : component.label.toLowerCase();
 		throw new ActionError(describeLookupProblem(what, lookup));
 	}
 	const { file, location, data } = matches[0];
-	return { type, definition, file, hint: location, isTarget, before: data };
+	return { key, definition, file, hint: location, isTarget, before: data };
 }
 
 /** What an action would do, worked out without changing anything. */
@@ -232,7 +218,7 @@ export async function previewAction(
 }
 
 /**
- * Run an action published by another component type on this character.
+ * Run a component's action on this character, such as `use` on consumables.
  * The target block is located among the character's notes and edited in
  * place, so the target does not need to be open or rendered.
  * Returns the action's announcement, if it has a description, such as
@@ -245,7 +231,7 @@ export async function invokeAction(
 	action: string,
 	args: ActionArgs = {},
 ): Promise<string | undefined> {
-	const { type, definition, file, hint, isTarget } = await resolveActionTarget(ctx, targetType, action, args);
+	const { key, definition, file, hint, isTarget } = await resolveActionTarget(ctx, targetType, action, args);
 
 	// Errors thrown inside vault.process are captured and re-thrown after,
 	// so a rejected action leaves the file untouched.
@@ -260,7 +246,7 @@ export async function invokeAction(
 			const block = atHint && isTarget(atHint)
 				? atHint
 				: findBlocks(lines).find(isTarget);
-			if (!block) throw new ActionError(`No ${type} found for this character`);
+			if (!block) throw new ActionError(`No ${key} found for this character`);
 
 			const doc = parseDocument(lines.slice(block.lineStart + 1, block.lineEnd).join('\n'));
 			const before = doc.toJS();

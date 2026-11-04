@@ -1,15 +1,16 @@
 import { MarkdownPostProcessorContext, TFile } from "obsidian";
 import { parseDocument } from "yaml";
 import { getApp } from "./app-provider";
-import { BlockTarget, findAllBlocks, findBlocks } from "./character";
-import { ComponentFactory, ComponentMetadata } from "./ui-lib/base-component";
-import { ActionArgs, ActionError, applyStepsToData, applyYamlSteps, getAction } from "./ui-lib/actions";
+import { BlockTarget, findAllBlocks, findBlocks, hasComponent } from "./character";
+import { blockAction, blockEventReaction, componentsOf, getComponent } from "./ui-lib/component";
+import { ActionArgs, ActionError, applyStepsToData, applyYamlSteps } from "./ui-lib/actions";
 import { YamlStep } from "./ui-lib/capabilities";
 
 /*
- * Character events, such as "long rest" or "short rest". Components subscribe with
- * the `onEvent` metadata hook (consumables refill on the events in their `refill`
- * list). Events are fired by the rest component and by roll effects.
+ * Character events, such as "long rest" or "dawn". Components react with their
+ * `onEvent` hook (consumables refill on the events in their `refill` list), and any
+ * card can subscribe with an `on` list. Events are fired by `events` buttons and by
+ * roll effects.
  */
 
 /** Event names are compared ignoring case and spacing: "Long Rest" is "long rest". */
@@ -17,17 +18,19 @@ export function normalizeEventName(name: string): string {
 	return name.trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
-/** One entry of a block's `on` list: run one of the block's own actions when an event fires. */
+/** One entry of a card's `on` list: run an action of one of the card's own components. */
 interface EventSubscription {
 	event: string;
+	target: string;
 	action: string;
 	args: ActionArgs;
 }
 
 /**
- * Read a block's `on` list. Any component with actions can subscribe this way:
+ * Read a card's `on` list:
  *   on:
  *     - event: dawn
+ *       target: inventory
  *       action: add
  *       args: { item: Goodberry, quantity: 10 }
  * Malformed entries come back as problems.
@@ -39,14 +42,15 @@ function subscriptionsOf(data: Record<string, unknown>): { subscriptions: EventS
 	const subscriptions: EventSubscription[] = [];
 	const problems: string[] = [];
 	list.forEach((entry, i) => {
-		const { event, action, args } = (entry ?? {}) as { event?: unknown; action?: unknown; args?: unknown };
-		if (typeof event !== 'string' || event.trim() === '' || typeof action !== 'string' || action.trim() === '') {
-			problems.push(`Event subscription ${i + 1} needs an event and an action.`);
+		const { event, target, action, args } = (entry ?? {}) as { event?: unknown; target?: unknown; action?: unknown; args?: unknown };
+		if ([event, target, action].some(field => typeof field !== 'string' || field.trim() === '')) {
+			problems.push(`Event subscription ${i + 1} needs an event, a target and an action.`);
 			return;
 		}
 		subscriptions.push({
-			event,
-			action: action.trim(),
+			event: event as string,
+			target: (target as string).trim(),
+			action: (action as string).trim(),
 			args: args && typeof args === 'object' && !Array.isArray(args) ? args as ActionArgs : {},
 		});
 	});
@@ -54,14 +58,17 @@ function subscriptionsOf(data: Record<string, unknown>): { subscriptions: EventS
 }
 
 /**
- * Problems with a block's `on` list that don't depend on which event fires: malformed
- * entries, or actions its component doesn't have. Shown on the block's own card.
+ * Problems with a card's `on` list that don't depend on which event fires: malformed
+ * entries, targets the card doesn't have, or actions they don't have. Shown on the card.
  */
-export function checkSubscriptions(metadata: ComponentMetadata, data: Record<string, unknown>): string[] {
+export function checkSubscriptions(data: Record<string, unknown>): string[] {
 	const { subscriptions, problems } = subscriptionsOf(data);
 	for (const subscription of subscriptions) {
-		if (!getAction(metadata.actions, subscription.action)) {
-			problems.push(`${metadata.label ?? metadata.type} has no action named "${subscription.action}" (for ${subscription.event})`);
+		const component = getComponent(subscription.target);
+		if (!component || !hasComponent(data, subscription.target)) {
+			problems.push(`This card has no ${subscription.target} (for ${subscription.event})`);
+		} else if (!blockAction(component, subscription.action)) {
+			problems.push(`${component.label} has no action named "${subscription.action}" (for ${subscription.event})`);
 		}
 	}
 	return problems;
@@ -75,14 +82,12 @@ export interface EventReaction {
 }
 
 /**
- * Work out how a block reacts to an event, on plain data: first its component's own
+ * Work out how a block reacts to an event, on plain data: first each component's own
  * `onEvent` (like consumables' refill, gain and lose), then each matching entry in its
- * `on` list, running the component's action on the block in order. Previews and real
- * firing both use this, so they always agree. A failing subscription becomes a problem
- * and the rest still apply.
+ * `on` list, in order. Previews and real firing both use this, so they always agree.
+ * A failing subscription becomes a problem and the rest still apply.
  */
 export function reactToEvent(
-	metadata: ComponentMetadata,
 	data: Record<string, unknown>,
 	eventName: string,
 	applied: boolean,
@@ -91,24 +96,24 @@ export function reactToEvent(
 	const reaction: EventReaction = { steps: [], messages: [], problems: [] };
 	let current = data;
 
-	if (metadata.onEvent) {
-		const steps = metadata.onEvent(current, event);
-		if (steps.length > 0) {
-			const after = applyStepsToData(current, steps);
-			const message = metadata.describeEvent?.({ before: current, after, args: {}, applied, event });
-			if (message) reaction.messages.push(message);
-			reaction.steps.push(...steps);
-			current = after;
-		}
+	for (const component of componentsOf(data)) {
+		const own = blockEventReaction(component, current, event);
+		if (!own) continue;
+		const after = applyStepsToData(current, own.steps);
+		const message = own.describe(current, after, applied);
+		if (message) reaction.messages.push(message);
+		reaction.steps.push(...own.steps);
+		current = after;
 	}
 
-	// Malformed entries are shown on the block's card (checkSubscriptions), not on every event.
+	// Malformed entries are shown on the card (checkSubscriptions), not on every event.
 	const { subscriptions } = subscriptionsOf(data);
 	for (const subscription of subscriptions) {
 		if (normalizeEventName(subscription.event) !== event) continue;
-		const definition = getAction(metadata.actions, subscription.action);
+		const component = getComponent(subscription.target);
+		const definition = component && hasComponent(data, subscription.target) ? blockAction(component, subscription.action) : undefined;
 		if (!definition) {
-			reaction.problems.push(`${metadata.label ?? metadata.type} has no action named "${subscription.action}"`);
+			reaction.problems.push(`This card has no ${subscription.target} action named "${subscription.action}"`);
 			continue;
 		}
 		try {
@@ -126,13 +131,6 @@ export function reactToEvent(
 	return reaction;
 }
 
-/** Component types that can react to events: their own onEvent, or actions for `on` lists. */
-function subscriberTypes(): Map<string, ComponentMetadata> {
-	return new Map(ComponentFactory.allMetadata()
-		.filter(metadata => metadata.onEvent || metadata.actions)
-		.map(metadata => [metadata.type.toLowerCase().trim(), metadata]));
-}
-
 /** What an event would change in one block. */
 export interface EventChange {
 	/** The block's descriptions, e.g. ["Refills Ki (1 of 4 left)"]. */
@@ -145,13 +143,10 @@ export interface EventChange {
 
 /** What an event would change across the character's notes, without saving anything. */
 export async function previewEvent(ctx: MarkdownPostProcessorContext, eventName: string): Promise<EventChange[]> {
-	const subscribers = subscriberTypes();
 	const changes: EventChange[] = [];
 
 	for (const block of await findAllBlocks(ctx)) {
-		const metadata = subscribers.get(block.location.type);
-		if (!metadata) continue;
-		const reaction = reactToEvent(metadata, block.data, eventName, false);
+		const reaction = reactToEvent(block.data, eventName, false);
 		if (reaction.steps.length === 0 && reaction.problems.length === 0) continue;
 		changes.push({
 			messages: reaction.messages,
@@ -170,13 +165,13 @@ export async function previewEvent(ctx: MarkdownPostProcessorContext, eventName:
  * followed by anything that failed.
  */
 export async function fireEvent(ctx: MarkdownPostProcessorContext, eventName: string): Promise<string[]> {
-	const subscribers = subscriberTypes();
 	const app = getApp();
 
-	// Only notes that hold a subscriber need to be opened.
+	// Only notes with a block that reacts need to be opened.
 	const files = new Map<string, TFile>();
 	for (const block of await findAllBlocks(ctx)) {
-		if (subscribers.has(block.location.type)) files.set(block.file.path, block.file);
+		const reaction = reactToEvent(block.data, eventName, false);
+		if (reaction.steps.length > 0 || reaction.problems.length > 0) files.set(block.file.path, block.file);
 	}
 
 	const announcements: string[] = [];
@@ -187,10 +182,8 @@ export async function fireEvent(ctx: MarkdownPostProcessorContext, eventName: st
 			const lines = data.split('\n');
 			// Edit from the bottom up, so earlier blocks keep their line numbers.
 			for (const block of findBlocks(lines).reverse()) {
-				const metadata = subscribers.get(block.type);
-				if (!metadata) continue;
 				const doc = parseDocument(lines.slice(block.lineStart + 1, block.lineEnd).join('\n'));
-				const reaction = reactToEvent(metadata, doc.toJS(), eventName, true);
+				const reaction = reactToEvent(doc.toJS(), eventName, true);
 				failures.push(...reaction.problems);
 				if (reaction.steps.length === 0) continue;
 				applyYamlSteps(doc, reaction.steps);

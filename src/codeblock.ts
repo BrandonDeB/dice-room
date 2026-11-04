@@ -1,32 +1,19 @@
 import { MarkdownPostProcessorContext, TFile } from "obsidian";
 import { parse as yamlParse, parseDocument } from "yaml";
-import { BaseComponent, BaseAttributes, ComponentFactory } from "./ui-lib/base-component";
-import { Persistable, Rollable, YamlStep } from "./ui-lib/capabilities";
+import { YamlStep } from "./ui-lib/capabilities";
 import { getApp } from "./app-provider";
 import { applyYamlSteps } from "./ui-lib/actions";
 import { DiceRoller, performRoll } from "./roll";
-import { PolicyViolation, checkPolicies } from "./ui-lib/policies";
+import { checkPolicies } from "./ui-lib/policies";
 import { errorMessage, renderBlockError } from "./ui-lib/block-error";
-import { createBlockLink } from "./ui-lib/native";
-
-function isRollable(
-    component: BaseComponent<any>
-): component is BaseComponent<any> & Rollable {
-    return typeof (component as any).setRollCallback === "function";
-}
-
-function isPersistable(
-	component: BaseComponent<any>
-): component is BaseComponent<any> & Persistable {
-	return typeof (component as any).setPersistCallback === "function";
-}
+import { Card } from "./ui-lib/card";
+import { loadCharacter } from "./character-data";
 
 export default class CodeBlock {
 
 	source: string;
 	el: HTMLElement;
 	ctx: MarkdownPostProcessorContext;
-	component: BaseComponent<BaseAttributes>;
 	roller: DiceRoller;
 
 	constructor(
@@ -73,25 +60,7 @@ export default class CodeBlock {
 		});
 	}
 
-	/** Show why the component cannot be displayed, linking to each block involved. */
-	private renderViolations(violations: PolicyViolation[]) {
-		const here = this.ctx.getSectionInfo(this.el)?.lineStart;
-
-		for (const violation of violations) {
-			const content = renderBlockError(this.el, violation.message);
-			const list = content.createEl('ul');
-
-			for (const { file, location } of violation.blocks) {
-				const isThis = file.path === this.ctx.sourcePath && location.lineStart === here;
-				const item = list.createEl('li');
-				createBlockLink(item, `${file.basename}, line ${location.lineStart + 1}`,
-					{ file, line: location.lineStart }, this.ctx.sourcePath);
-				if (isThis) item.appendText(' (this block)');
-			}
-		}
-	}
-
-	/** Build the block's component, or show why it can't be built. Never leaves it blank. */
+	/** Build the block's card, or show why it can't be built. Never leaves it blank. */
 	async initialize() {
 		try {
 			await this.build();
@@ -112,48 +81,18 @@ export default class CodeBlock {
 			return;
 		}
 
-		const example = 'For example, start it with: type: inventory';
 		if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-			renderBlockError(this.el, 'This dicelist block is empty or not a list of fields', example);
+			renderBlockError(this.el, 'This dicelist block is empty or not a list of fields', 'For example, start it with: name: Longbow');
 			return;
 		}
-		const componentData = parsed as BaseAttributes;
-		if (typeof componentData.type !== 'string' || componentData.type.trim() === '') {
-			renderBlockError(this.el, 'This dicelist block needs a type', example);
-			return;
-		}
+		const data = parsed as Record<string, unknown>;
+		const violations = checkPolicies(await loadCharacter(this.ctx), data);
 
-		const metadata = ComponentFactory.getMetadata(componentData.type);
-		if (!metadata) {
-			const known = ComponentFactory.allMetadata().map(m => m.type).join(', ');
-			renderBlockError(this.el, `Unknown component type "${componentData.type}"`, `Available types: ${known}.`);
-			return;
-		}
-
-		const violations = await checkPolicies(metadata, this.ctx, componentData);
-		if (violations.length > 0) {
-			this.renderViolations(violations);
-			return;
-		}
-
-		const component = ComponentFactory.create(this.el, this.ctx, componentData);
-		if (!component) {
-			renderBlockError(this.el, `Could not create a ${componentData.type} block`);
-			return;
-		}
-
-		this.component = component;
-
-		if (isRollable(this.component)) {
-			this.component.setRollCallback((roll) => {
-				void performRoll(this.ctx, roll, this.roller);
-			});
-		}
-
-		if (isPersistable(this.component)) {
-			this.component.setPersistCallback(this.applySteps);
-		}
-
-		this.ctx.addChild(this.component);
+		this.ctx.addChild(new Card(this.el, {
+			ctx: this.ctx,
+			persist: this.applySteps,
+			roll: roll => void performRoll(this.ctx, roll, this.roller),
+			lineStart: this.ctx.getSectionInfo(this.el)?.lineStart,
+		}, data, violations));
 	}
 }

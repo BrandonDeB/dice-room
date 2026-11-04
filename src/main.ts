@@ -3,7 +3,7 @@ import { DiceView, VIEW_TYPE_DICE } from './view';
 import { DiceRoomPluginSettings, DiceRollSettingTab, DEFAULT_SETTINGS } from './settings';
 import { setApp } from './app-provider';
 import CodeBlock from './codeblock';
-import { registerComponents } from './ui-lib/register';
+import { registerComponents } from './ui-lib/components';
 import { DiceRoller } from './roll';
 import { HOVER_SOURCE } from './ui-lib/native';
 

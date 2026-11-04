@@ -1,10 +1,10 @@
 import { Setting } from 'obsidian';
-import { BaseAttributes, BaseComponent, ComponentMetadata } from './base-component';
-import { Persistable, YamlStep } from './capabilities';
-import { ActionError, ActionMap, ActionResult, optionalPositiveInt, requireString } from './actions';
-import { createCallout, createCard } from './native';
-import { nameList } from '../modifiers';
-import { normalizeEventName } from '../events';
+import { YamlStep } from '../capabilities';
+import { ActionError, ActionMap, ActionResult, optionalPositiveInt, requireString } from '../actions';
+import { CardComponent, ComponentView } from '../component';
+import { createCallout } from '../native';
+import { nameList } from '../../modifiers';
+import { normalizeEventName } from '../../events';
 
 /** One limited resource as written in YAML, such as spell slots or Wild Shape uses. */
 interface ConsumableEntry {
@@ -20,9 +20,8 @@ interface ConsumableEntry {
 	lose?: unknown;
 }
 
-export interface ConsumableAttributes extends BaseAttributes {
-	consumables?: ConsumableEntry[];
-}
+/** The `consumables` list. */
+type ConsumableAttributes = ConsumableEntry[];
 
 /** A consumable whose fields have been checked. */
 interface Consumable {
@@ -62,7 +61,7 @@ function parseEventAmounts(value: unknown, field: string, name: string): EventAm
 }
 
 function entries(attrs: ConsumableAttributes): ConsumableEntry[] {
-	return Array.isArray(attrs?.consumables) ? attrs.consumables : [];
+	return Array.isArray(attrs) ? attrs : [];
 }
 
 function entryName(entry: ConsumableEntry): string | null {
@@ -151,7 +150,7 @@ const consumableActions: ActionMap<ConsumableAttributes> = {
 			if (consumable.remaining < amount) {
 				throw new ActionError(`Not enough ${consumable.name}: ${consumable.remaining} of ${consumable.max} left, need ${amount}`);
 			}
-			return [{ op: 'set', path: ['consumables', index, 'used'], value: consumable.used + amount }];
+			return [{ op: 'set', path: [index, 'used'], value: consumable.used + amount }];
 		},
 		describe: describeChange('Uses', 'Used', true),
 	},
@@ -160,7 +159,7 @@ const consumableActions: ActionMap<ConsumableAttributes> = {
 		run: (attrs, args) => {
 			const { index, consumable } = requireConsumable(attrs, requireString(args, 'name'));
 			const amount = optionalPositiveInt(args, 'amount', 1);
-			return [{ op: 'set', path: ['consumables', index, 'used'], value: Math.max(0, consumable.used - amount) }];
+			return [{ op: 'set', path: [index, 'used'], value: Math.max(0, consumable.used - amount) }];
 		},
 		describe: describeChange('Restores', 'Restored', true),
 	},
@@ -168,7 +167,7 @@ const consumableActions: ActionMap<ConsumableAttributes> = {
 	refill: {
 		run: (attrs, args) => {
 			const { index } = requireConsumable(attrs, requireString(args, 'name'));
-			return [{ op: 'set', path: ['consumables', index, 'used'], value: 0 }];
+			return [{ op: 'set', path: [index, 'used'], value: 0 }];
 		},
 		describe: describeChange('Refills', 'Refilled', false),
 	},
@@ -215,7 +214,7 @@ function eventEffects(attrs: ConsumableAttributes, eventName: string): EventEffe
 /** Subscribes consumables to events through their `refill`, `gain` and `lose`. */
 function consumableOnEvent(attrs: ConsumableAttributes, event: string): YamlStep[] {
 	return eventEffects(attrs, event)
-		.map(({ index, used }) => ({ op: 'set', path: ['consumables', index, 'used'], value: used }));
+		.map(({ index, used }) => ({ op: 'set', path: [index, 'used'], value: used }));
 }
 
 /**
@@ -236,55 +235,70 @@ function describeConsumableEvent({ before, applied, event }: ActionResult<Consum
 	return applied ? `${parts.join('; ')}.` : parts.join(', ');
 }
 
+function renderRow(view: ComponentView<ConsumableAttributes>, consumable: Consumable, index: number) {
+	const { name, max, used, remaining } = consumable;
+	const setUsed = (value: number) => void view.persist([{ op: 'set', path: [index, 'used'], value }]);
+	const amounts = (list: EventAmount[], verb: string) =>
+		list.map(({ event, amount }) => `${verb} ${amount} on ${event}`);
+	const details = [
+		consumable.description,
+		consumable.refill.length > 0 ? `Refills on ${consumable.refill.join(' or ')}` : '',
+		...amounts(consumable.gain, 'Gains'),
+		...amounts(consumable.lose, 'Loses'),
+	]
+		.filter(Boolean).join('. ');
+
+	const row = new Setting(view.el).setName(name);
+	if (details) row.setDesc(details);
+
+	row.addExtraButton(button => button
+		.setIcon('minus')
+		.setTooltip(`Use one ${name}`)
+		.setDisabled(remaining === 0)
+		.onClick(() => { if (remaining > 0) setUsed(used + 1); }));
+
+	row.controlEl.createSpan({
+		cls: 'dicelist-consumable-count',
+		text: `${remaining} of ${max} left`,
+		attr: { 'aria-live': 'polite' },
+	});
+
+	row.addExtraButton(button => button
+		.setIcon('plus')
+		.setTooltip(`Restore one ${name}`)
+		.setDisabled(used === 0)
+		.onClick(() => { if (used > 0) setUsed(used - 1); }));
+}
+
 /**
- * Limited resources that are used up and later refilled, such as spell slots,
- * transformations or once-per-rest features. One block can hold several.
+ * Limited resources that are used up and later refilled, such as spell slots, hit dice,
+ * or once-per-rest features. A card can hold several.
  */
-export class ConsumableComponent extends BaseComponent<ConsumableAttributes> implements Persistable {
+export const consumablesComponent: CardComponent<ConsumableAttributes> = {
+	key: 'consumables',
+	label: 'Consumables',
+	actions: consumableActions,
+	entryNames: attrs => entries(attrs).map(entryName).filter((name): name is string => name !== null),
+	onEvent: consumableOnEvent,
+	describeEvent: describeConsumableEvent,
 
-	static readonly metadata: ComponentMetadata = {
-		type: "consumable",
-		label: "Consumables",
-		policies: ["uniqueEntryNames"],
-		actions: consumableActions,
-		entryNames: (attrs: ConsumableAttributes) =>
-			entries(attrs).map(entryName).filter((name): name is string => name !== null),
-		onEvent: consumableOnEvent,
-		describeEvent: describeConsumableEvent,
-	}
-
-	onPersist: (steps: YamlStep[]) => Promise<void>;
-	setPersistCallback(cb: (steps: YamlStep[]) => Promise<void>): void {
-		this.onPersist = cb;
-	}
-
-	private setUsed(index: number, used: number) {
-		void this.onPersist([{ op: 'set', path: ['consumables', index, 'used'], value: used }]);
-	}
-
-	render() {
-		const card = createCard(this.containerEl, undefined, this.typeLabel);
-		const list = entries(this.attributes);
-
-		if (list.length === 0) {
-			new Setting(card).setName('No consumables yet').setDesc('Add entries with a name and a max, such as spell slots.');
-			return;
-		}
-
+	render(view) {
+		const list = entries(view.data);
 		let refillable = false;
 		list.forEach((entry, index) => {
 			const consumable = parseEntry(entry);
 			if (typeof consumable === 'string') {
-				createCallout(card, 'error', consumable);
+				createCallout(view.el, 'error', consumable);
 				return;
 			}
 			if (consumable.used > 0) refillable = true;
-			this.renderRow(card, consumable, index);
+			renderRow(view, consumable, index);
 		});
+		if (list.length < 2) return;
 
-		new Setting(card)
+		new Setting(view.el)
 			.setName('Refill all')
-			.setDesc('Restore every consumable here to full, for example after a rest.')
+			.setDesc('Restore every consumable here to full.')
 			.addButton(button => button
 				.setButtonText('Refill')
 				.setDisabled(!refillable)
@@ -292,42 +306,8 @@ export class ConsumableComponent extends BaseComponent<ConsumableAttributes> imp
 					const steps: YamlStep[] = list
 						.map((entry, index) => ({ entry: parseEntry(entry), index }))
 						.filter(({ entry }) => typeof entry !== 'string' && entry.used > 0)
-						.map(({ index }) => ({ op: 'set', path: ['consumables', index, 'used'], value: 0 }));
-					if (steps.length > 0) void this.onPersist(steps);
+						.map(({ index }) => ({ op: 'set', path: [index, 'used'], value: 0 }));
+					if (steps.length > 0) void view.persist(steps);
 				}));
-	}
-
-	private renderRow(card: HTMLElement, consumable: Consumable, index: number) {
-		const { name, max, used, remaining } = consumable;
-		const amounts = (list: EventAmount[], verb: string) =>
-			list.map(({ event, amount }) => `${verb} ${amount} on ${event}`);
-		const details = [
-			consumable.description,
-			consumable.refill.length > 0 ? `Refills on ${consumable.refill.join(' or ')}` : '',
-			...amounts(consumable.gain, 'Gains'),
-			...amounts(consumable.lose, 'Loses'),
-		]
-			.filter(Boolean).join('. ');
-
-		const row = new Setting(card).setName(name);
-		if (details) row.setDesc(details);
-
-		row.addExtraButton(button => button
-			.setIcon('minus')
-			.setTooltip(`Use one ${name}`)
-			.setDisabled(remaining === 0)
-			.onClick(() => { if (remaining > 0) this.setUsed(index, used + 1); }));
-
-		row.controlEl.createSpan({
-			cls: 'dicelist-consumable-count',
-			text: `${remaining} of ${max} left`,
-			attr: { 'aria-live': 'polite' },
-		});
-
-		row.addExtraButton(button => button
-			.setIcon('plus')
-			.setTooltip(`Restore one ${name}`)
-			.setDisabled(used === 0)
-			.onClick(() => { if (used > 0) this.setUsed(index, used - 1); }));
-	}
-}
+	},
+};

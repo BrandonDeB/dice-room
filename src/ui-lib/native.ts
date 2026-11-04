@@ -1,5 +1,5 @@
 import { HoverParent, Keymap, Menu, Modal, Setting, SettingGroup, TFile, setIcon } from 'obsidian';
-import { parseModifierValue } from '../modifiers';
+import { modifierValue } from '../modifiers';
 import type { Advantage, PublishedModifier } from '../modifiers';
 import { getApp } from '../app-provider';
 
@@ -45,36 +45,31 @@ export function createSettingGroup(
 }
 
 /**
- * A grouped panel for a dicelist component: a settings group that fills the note's
- * width. Add Setting rows to the returned element, and wrap other content in an
- * element with the `dicelist-card-content` class so it gets row padding.
+ * A grouped panel for a card: a settings group that fills the note's width. Add
+ * Setting rows to the returned element, and wrap other content in an element with
+ * the `dicelist-card-content` class so it gets row padding.
  *
- * The heading says what kind of component this is. With a title it reads like
- * "Longbow" followed by a "Weapon" badge (Obsidian's flair style); without one, the
- * type label is the heading, like "Inventory".
+ * The heading is the card's name, followed by its `type` tag as a badge (Obsidian's
+ * flair style), like "Longbow" then "Weapon". With only a tag, the tag is the heading.
  */
 export interface CardOptions {
-	/** Shown under the title in muted text, like a setting's description. */
-	description?: string;
-	/** Adds content to the right of the heading, such as the component's picture. */
+	/** Adds content to the right of the heading, such as the card's picture. */
 	decorateHeading?: (controlEl: HTMLElement) => void;
 }
 
 export function createCard(
 	parent: HTMLElement,
 	title: string | undefined,
-	typeLabel: string,
+	tag: string | undefined,
 	options: CardOptions = {},
 ): HTMLDivElement {
-	const { description, decorateHeading } = options;
-	const heading = title || description
+	const heading = title && tag
 		? createFragment(fragment => {
-			fragment.appendText(title || typeLabel);
-			if (title) fragment.createSpan({ cls: 'flair dicelist-type', text: typeLabel });
-			if (description) fragment.createDiv({ cls: 'setting-item-description dicelist-card-description', text: description });
+			fragment.appendText(title);
+			fragment.createSpan({ cls: 'flair dicelist-type', text: tag });
 		})
-		: typeLabel;
-	return createSettingGroup(parent, heading, 'dicelist-card', decorateHeading);
+		: (title || tag);
+	return createSettingGroup(parent, heading, 'dicelist-card', options.decorateHeading);
 }
 
 const CALLOUT_ICONS = { error: 'zap', warning: 'alert-triangle', info: 'info' } as const;
@@ -200,12 +195,12 @@ export interface RollChoice {
 }
 
 /** Right-click, or the context menu key, on a roll offers other ways to make it. */
-export function addRollMenu(el: HTMLElement, choices: RollChoice[]) {
+export function addRollMenu(el: HTMLElement, choices: RollChoice[] | (() => RollChoice[])) {
 	el.addEventListener('contextmenu', (event: MouseEvent) => {
 		event.preventDefault();
 		event.stopPropagation();
 		const menu = new Menu();
-		for (const choice of choices) menu.addItem(item => item.setTitle(choice.title).onClick(choice.onClick));
+		for (const choice of typeof choices === 'function' ? choices() : choices) menu.addItem(item => item.setTitle(choice.title).onClick(choice.onClick));
 		menu.showAtMouseEvent(event);
 	});
 }
@@ -235,6 +230,16 @@ export function rollChoices(roll: (change: RollChange) => void): RollChoice[] {
 }
 
 /**
+ * Right-click choices for any roll: advantage for rolls with a d20, and for other
+ * rolls, doubling the dice as for a critical hit.
+ */
+export function rollMenu(d20: boolean, roll: (change: RollChange) => void): RollChoice[] {
+	return d20
+		? rollChoices(roll)
+		: [{ title: 'Roll critical hit (double the dice)', onClick: () => roll({ critical: true }) }, modifierChoice(roll, 'damage')];
+}
+
+/**
  * A small native dialog for one roll: an optional modifier, plus advantage or
  * disadvantage (d20 rolls) or a critical hit (damage). Enter rolls; bad values are explained.
  */
@@ -250,7 +255,7 @@ class OneRollModal extends Modal {
 		const error = this.contentEl.createDiv({ cls: 'roll-modifiers roll-problem' });
 		const submit = () => {
 			if (value.trim() !== '') {
-				const parsed = parseModifierValue(value);
+				const parsed = modifierValue(value);
 				if (!parsed.valid) {
 					error.setText(parsed.reason);
 					return;
