@@ -66,6 +66,7 @@ export class DiceRollSettingTab extends PluginSettingTab {
 	async rollRefresh(ua: HTMLDivElement) {
 		try {
 			if (this.previewRoller) {
+				this.previewRoller.renderer?.forceContextLoss?.();
 				this.previewRoller.destroy();
 				this.previewRoller = null;
 				ua.innerHTML = '';
@@ -89,6 +90,7 @@ export class DiceRollSettingTab extends PluginSettingTab {
 
 	hide(): void {
 		// Stop the preview's animation and free its renderer when settings close.
+		this.previewRoller?.renderer?.forceContextLoss?.();
 		this.previewRoller?.destroy();
 		this.previewRoller = null;
 	}

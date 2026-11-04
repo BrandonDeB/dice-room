@@ -91,30 +91,58 @@ export class DiceView extends ItemView {
 
 	}
 
-	private removeUser(user: number) {
-		let roller = this.rollers.get(user);
-		if (roller) {
-			this.rollers.delete(user);
-		}
-		const elem = document.getElementById(this.getRollAreaId(user));
-		if (elem && elem.parentElement) {
-			elem.parentElement.removeChild(elem);
+	/**
+	 * Stop a dice box and free its WebGL context. Browsers only allow about 16 at once,
+	 * so boxes that are dropped without this eventually stop any new one from starting.
+	 */
+	private destroyRoller(user: number) {
+		const roller = this.rollers.get(user);
+		if (!roller) return;
+		this.rollers.delete(user);
+		try {
+			// dispose() alone leaves the context for the garbage collector; release it now.
+			roller.renderer?.forceContextLoss?.();
+			roller.destroy();
+		} catch (err) {
+			console.error(err);
 		}
 	}
 
-	private createDiceObject(user: {id: number, name: string, die: CustomDice}, rollView: HTMLDivElement) {
+	private destroyAllRollers() {
+		for (const user of [...this.rollers.keys()]) this.destroyRoller(user);
+		for (const timeout of this.popupTimeouts.values()) clearTimeout(timeout);
+		this.popupTimeouts.clear();
+	}
+
+	private removeUser(user: number) {
+		this.destroyRoller(user);
+		const elem = this.container.querySelector(`#${this.getRollAreaId(user)}`);
+		elem?.remove();
+	}
+
+	private async createDiceObject(user: {id: number, name: string, die: CustomDice}, rollView: HTMLDivElement) {
+		// Someone joining twice replaces their old box instead of leaking it.
+		this.removeUser(user.id);
 		const ua = rollView.createDiv({cls: "single-roller", attr: {id: this.getRollAreaId(user.id)}});
 		ua.createEl("h3", {cls: "player-label", text: user.name});
 		this.createPopup(ua, user.id);
 		const Box = this.createDiceBox(user.id, user.die, ua);
-		Box.initialize();
+		try {
+			await Box.initialize();
+		} catch (err) {
+			// Without a renderer the box can't roll; leave it out so rolls don't throw.
+			console.error(err);
+			ua.createEl("p", { text: `Couldn't show ${user.name}'s dice: ${err instanceof Error ? err.message : String(err)}. Reloading Obsidian frees up 3D views.` });
+			new Notice("Couldn't start the 3D dice. Reload Obsidian, then join again.");
+			return;
+		}
 		this.rollers.set(user.id, Box);
 	}
 
 	private createDiceObjects(users: {id: number, name: string, die: CustomDice}[]) {
 		const rollView = this.container.createDiv({ cls: 'rollView', attr: {id: "scene-container"} });
 		users.forEach(user => {
-			this.createDiceObject(user, rollView);
+			void this.createDiceObject(user, rollView);
 		});
 	}
 
@@ -143,7 +171,8 @@ export class DiceView extends ItemView {
 	}
 
 	public joinRoom(room: string) {
-
+		// Joining again closes the old connection instead of leaving it open.
+		this.ws?.close();
 		this.ws = new WebSocket(`${this.plugin.settings.serverAddress}`);
 
 		this.ws.onopen = (event) => {
@@ -168,16 +197,17 @@ export class DiceView extends ItemView {
 				}
 				const roller = this.rollers.get(data.user);
 				if (roller) {
-					roller.roll(notation);
+					roller.roll(notation).catch((err: unknown) => console.error(err));
 				}
 			} else if (data.type == "join") {
 				const rollView = document.getElementById('scene-container');
 				if (rollView != null && rollView.instanceOf(HTMLDivElement)) {
-					this.createDiceObject(data.user, rollView);
+					void this.createDiceObject(data.user, rollView);
 				}
 			} else if (data.type == "leave") {
 				this.removeUser(data.user);
 			} else if (data.type == "join_ack") {
+				this.destroyAllRollers();
 				this.container.empty();
 				const header = this.container.createDiv({cls: 'header'})
 				header.createEl('h2', { text: this.room });
@@ -200,6 +230,7 @@ export class DiceView extends ItemView {
 					currentUser = 0;
 					this.room = "";
 					this.ws?.close();
+					this.destroyAllRollers();
 					this.onOpen();
 
 				});
@@ -230,5 +261,7 @@ export class DiceView extends ItemView {
 
 	async onClose() {
 		this.ws?.close();
+		// Also runs when the plugin reloads: free every 3D view so reloads don't use them up.
+		this.destroyAllRollers();
 	}
 }
