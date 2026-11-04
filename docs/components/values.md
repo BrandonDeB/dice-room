@@ -36,6 +36,7 @@ Each value has:
 | `categories` | No | Active [modifiers](modifiers.md) with any of these in their `appliesTo` add their numbers to it, such as a shield adding 2 to armor class. Only plain numbers add; dice and advantage are for rolls. |
 | `description` | No | Shown under the name. |
 | `min`, `max` | No | On a plain number, adds minus and plus buttons, and keeps it within these. Good for things you count, like exhaustion or death saves. |
+| `hidden` | No | `true` to leave it off the card, for values that only feed formulas, like ability modifiers. Formulas still use it. |
 
 The card shows each value worked out, and which modifiers added to it, such as
 "Includes: Shield (+2)". A value with a mistake, or one that names a value the character

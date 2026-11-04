@@ -15,6 +15,8 @@ export interface ModifierFields {
 	description?: unknown;
 	/** Only one concentration modifier can be on: switching one on ends the others. */
 	concentration?: unknown;
+	/** `false` keeps it out of rolls' "Off:" lists while it's switched off, as for conditions. */
+	showWhenOff?: unknown;
 }
 
 /** The event fired when a concentration modifier is switched on. */
@@ -41,6 +43,7 @@ export function modifierFromFields(fields: ModifierFields): Modifier | null {
 		value: fields.value,
 		active: fields.active === true,
 		categories: nameList(fields.appliesTo).map(normalizeName),
+		showWhenOff: fields.showWhenOff !== false,
 	};
 }
 

@@ -17,6 +17,8 @@ interface ValueEntry {
 	/** With a min or max, a number gets minus and plus buttons, and stays within them. */
 	min?: unknown;
 	max?: unknown;
+	/** Not shown on the card, for values that only feed formulas, like ability modifiers. */
+	hidden?: unknown;
 }
 
 function entries(data: unknown): ValueEntry[] {
@@ -105,6 +107,7 @@ export const valuesComponent: CardComponent<ValueEntry[]> = {
 				createCallout(view.el, 'error', 'Each value needs a name.');
 				return;
 			}
+			if (entry.hidden === true) return;
 			const description = typeof entry.description === 'string' ? entry.description : '';
 
 			if (grid && !isCounter(entry)) {

@@ -37,39 +37,65 @@ on:
 
 ## Ability scores
 
-Each score, its modifier, a check and a save. Rangers are proficient in Strength and
-Dexterity saves. `layout: grid` shows them as tiles.
+Each score and its modifier are values, hidden since the tiles show them. Each ability is
+a check with its save nested inside, so `layout: grid` shows six tiles: click a tile for
+the check, or its Save button for the save. Rangers are proficient in Strength and
+Dexterity saves.
 
 ````markdown
 ```dicelist
 name: Ability scores
 layout: grid
 values:
-  - { name: str, value: 12 }
-  - { name: dex, value: 17 }
-  - { name: con, value: 14 }
-  - { name: int, value: 10 }
-  - { name: wis, value: 15 }
-  - { name: cha, value: 8 }
-  - { name: str mod, value: "({{str}} - 10) / 2" }
-  - { name: dex mod, value: "({{dex}} - 10) / 2" }
-  - { name: con mod, value: "({{con}} - 10) / 2" }
-  - { name: int mod, value: "({{int}} - 10) / 2" }
-  - { name: wis mod, value: "({{wis}} - 10) / 2" }
-  - { name: cha mod, value: "({{cha}} - 10) / 2" }
+  - { name: str, value: 12, hidden: true }
+  - { name: dex, value: 17, hidden: true }
+  - { name: con, value: 14, hidden: true }
+  - { name: int, value: 10, hidden: true }
+  - { name: wis, value: 15, hidden: true }
+  - { name: cha, value: 8, hidden: true }
+  - { name: str mod, value: "({{str}} - 10) / 2", hidden: true }
+  - { name: dex mod, value: "({{dex}} - 10) / 2", hidden: true }
+  - { name: con mod, value: "({{con}} - 10) / 2", hidden: true }
+  - { name: int mod, value: "({{int}} - 10) / 2", hidden: true }
+  - { name: wis mod, value: "({{wis}} - 10) / 2", hidden: true }
+  - { name: cha mod, value: "({{cha}} - 10) / 2", hidden: true }
 rolls:
-  - { name: STR check, dice: "1d20 + {{str mod}}", categories: [check, strength] }
-  - { name: DEX check, dice: "1d20 + {{dex mod}}", categories: [check, dexterity] }
-  - { name: CON check, dice: "1d20 + {{con mod}}", categories: [check, constitution] }
-  - { name: INT check, dice: "1d20 + {{int mod}}", categories: [check, intelligence] }
-  - { name: WIS check, dice: "1d20 + {{wis mod}}", categories: [check, wisdom] }
-  - { name: CHA check, dice: "1d20 + {{cha mod}}", categories: [check, charisma] }
-  - { name: STR save, dice: "1d20 + {{str mod}} + {{proficiency}}", categories: [save, strength] }
-  - { name: DEX save, dice: "1d20 + {{dex mod}} + {{proficiency}}", categories: [save, dexterity] }
-  - { name: CON save, dice: "1d20 + {{con mod}}", categories: [save, constitution] }
-  - { name: INT save, dice: "1d20 + {{int mod}}", categories: [save, intelligence] }
-  - { name: WIS save, dice: "1d20 + {{wis mod}}", categories: [save, wisdom] }
-  - { name: CHA save, dice: "1d20 + {{cha mod}}", categories: [save, charisma] }
+  - name: STR
+    value: "{{str}}"
+    dice: 1d20 + {{str mod}}
+    categories: [check, strength]
+    rolls:
+      - { name: Save, dice: "1d20 + {{str mod}} + {{proficiency}}", categories: [save, strength] }
+  - name: DEX
+    value: "{{dex}}"
+    dice: 1d20 + {{dex mod}}
+    categories: [check, dexterity]
+    rolls:
+      - { name: Save, dice: "1d20 + {{dex mod}} + {{proficiency}}", categories: [save, dexterity] }
+  - name: CON
+    value: "{{con}}"
+    dice: 1d20 + {{con mod}}
+    categories: [check, constitution]
+    rolls:
+      - { name: Save, dice: "1d20 + {{con mod}}", categories: [save, constitution] }
+  - name: INT
+    value: "{{int}}"
+    dice: 1d20 + {{int mod}}
+    categories: [check, intelligence]
+    rolls:
+      - { name: Save, dice: "1d20 + {{int mod}}", categories: [save, intelligence] }
+  - name: WIS
+    value: "{{wis}}"
+    dice: 1d20 + {{wis mod}}
+    categories: [check, wisdom]
+    rolls:
+      - { name: Save, dice: "1d20 + {{wis mod}}", categories: [save, wisdom] }
+  - name: CHA
+    value: "{{cha}}"
+    dice: 1d20 + {{cha mod}}
+    categories: [check, charisma]
+    rolls:
+      - { name: Save, dice: "1d20 + {{cha mod}}", categories: [save, charisma] }
 ```
 ````
 
@@ -78,14 +104,15 @@ Dividing rounds down, so `({{dex}} - 10) / 2` is the ability modifier.
 ## Skills
 
 A roll per skill: the ability modifier, plus proficiency where proficient. For expertise,
-add `2 * {{proficiency}}` instead. Perception is also a value, so Passive Perception can use it.
+add `2 * {{proficiency}}` instead. Perception is also a hidden value, so Passive Perception
+can use it.
 
 ````markdown
 ```dicelist
 name: Skills
 layout: grid
 values:
-  - { name: perception, value: "{{wis mod}} + {{proficiency}}" }
+  - { name: perception, value: "{{wis mod}} + {{proficiency}}", hidden: true }
 rolls:
   - { name: Acrobatics, dice: "1d20 + {{dex mod}}", categories: [check, skill, acrobatics] }
   - { name: Animal Handling, dice: "1d20 + {{wis mod}}", categories: [check, skill, animal handling] }
@@ -234,8 +261,9 @@ on:
 
 ## Conditions and exhaustion
 
-Each condition is a modifier with a switch. Exhaustion is a value you count up and down,
-and its modifier takes 2 per level from d20 rolls (the 2024 rules).
+Each condition is a modifier with a switch. `showWhenOff: false` keeps conditions that
+are off out of every roll's "Off:" list. Exhaustion is a value you count up and down, and
+its modifier takes 2 per level from d20 rolls (the 2024 rules).
 
 ````markdown
 ```dicelist
@@ -243,12 +271,12 @@ name: Conditions
 values:
   - { name: exhaustion, value: 0, min: 0, max: 6 }
 modifiers:
-  - { name: Blinded, value: disadvantage, appliesTo: [attack] }
-  - { name: Frightened, value: disadvantage, appliesTo: [attack, check] }
-  - { name: Invisible, value: advantage, appliesTo: [attack] }
-  - { name: Poisoned, value: disadvantage, appliesTo: [attack, check] }
-  - { name: Prone, value: disadvantage, appliesTo: [attack] }
-  - { name: Restrained, value: disadvantage, appliesTo: [attack] }
+  - { name: Blinded, value: disadvantage, appliesTo: [attack], showWhenOff: false }
+  - { name: Frightened, value: disadvantage, appliesTo: [attack, check], showWhenOff: false }
+  - { name: Invisible, value: advantage, appliesTo: [attack], showWhenOff: false }
+  - { name: Poisoned, value: disadvantage, appliesTo: [attack, check], showWhenOff: false }
+  - { name: Prone, value: disadvantage, appliesTo: [attack], showWhenOff: false }
+  - { name: Restrained, value: disadvantage, appliesTo: [attack], showWhenOff: false }
   - { name: Exhaustion, value: "-2 * {{exhaustion}}", appliesTo: [attack, check, save], active: true }
 on:
   - { event: long rest, target: values, action: decrease, args: { name: exhaustion } }

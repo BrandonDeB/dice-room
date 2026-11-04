@@ -34,6 +34,8 @@ export interface Modifier {
 	value: unknown;
 	active: boolean;
 	categories: string[];
+	/** Whether rolls list it as "Off:" while it's switched off. Defaults to true. */
+	showWhenOff?: boolean;
 }
 
 /** A modifier with its value worked out, and where it was published, for messages and links. */
@@ -42,6 +44,7 @@ export interface PublishedModifier {
 	value: ModifierValue | InvalidModifierValue;
 	active: boolean;
 	categories: string[];
+	showWhenOff: boolean;
 	file: TFile;
 	lineStart: number;
 	location: BlockLocation;
@@ -180,7 +183,8 @@ export function resolveRollModifiers(character: CharacterData, roll: Roll): Reso
 			continue;
 		}
 		if (!modifier.active) {
-			inactive.push(modifier);
+			// Conditions and the like stay out of every roll's "Off:" list unless asked for.
+			if (modifier.showWhenOff) inactive.push(modifier);
 			continue;
 		}
 		const value = modifier.value;

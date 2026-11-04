@@ -110,8 +110,13 @@ export async function loadCharacter(ctx: MarkdownPostProcessorContext): Promise<
 	};
 
 	const published = (index: number): PublishedModifier => {
-		const { name, active, categories, file, location } = rawModifiers[index];
-		return { name, active, categories, file, location, lineStart: location.lineStart, value: modifierValueAt(index) };
+		const { name, active, categories, showWhenOff, file, location } = rawModifiers[index];
+		return {
+			name, active, categories, file, location,
+			showWhenOff: showWhenOff !== false,
+			lineStart: location.lineStart,
+			value: modifierValueAt(index),
+		};
 	};
 
 	let modifierList: PublishedModifier[] | null = null;

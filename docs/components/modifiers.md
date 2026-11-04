@@ -33,14 +33,15 @@ Conditions are modifiers you write for your game. For D&D:
 ```dicelist
 name: Conditions
 modifiers:
-  - { name: Poisoned, value: disadvantage, appliesTo: [attack, check] }
-  - { name: Prone, value: disadvantage, appliesTo: [attack] }
-  - { name: Invisible, value: advantage, appliesTo: [attack] }
+  - { name: Poisoned, value: disadvantage, appliesTo: [attack, check], showWhenOff: false }
+  - { name: Prone, value: disadvantage, appliesTo: [attack], showWhenOff: false }
+  - { name: Invisible, value: advantage, appliesTo: [attack], showWhenOff: false }
   - { name: Exhaustion, value: "-2 * {{exhaustion}}", appliesTo: [attack, check, save], active: true }
 ```
 ````
 
-The Exhaustion modifier uses a [value](values.md) you count up and down, so it takes 2 per
+`showWhenOff: false` keeps conditions that are off out of every roll's "Off:" list. The
+Exhaustion modifier uses a [value](values.md) you count up and down, so it takes 2 per
 level and isn't listed on rolls at level 0.
 
 ## Fields
@@ -55,6 +56,7 @@ level and isn't listed on rolls at level 0.
 | `appliesTo` | No | [Categories](../rolls.md#categories) of rolls and [values](values.md) it applies to automatically, such as `attack`, `damage` or `armor class`. Without it, the modifier only applies to rolls that name it. |
 | `description` | No | Shown under the name. |
 | `concentration` | No | `true` for a spell you concentrate on. See [concentration](#concentration). |
+| `showWhenOff` | No | `false` keeps it out of rolls' "Off:" lists while it's switched off. Defaults to `true`. Use it for conditions, so rolls only mention them while they're on. |
 
 Each row shows the value worked out, such as `-4` for exhaustion at level 2.
 
