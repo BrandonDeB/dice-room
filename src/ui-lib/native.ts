@@ -231,6 +231,32 @@ export function rollMenu(d20: boolean, roll: (change: RollChange) => void): Roll
 		: [{ title: 'Roll critical hit (double the dice)', onClick: () => roll({ critical: true }) }, modifierChoice(roll, 'damage')];
 }
 
+let segmentedCount = 0;
+
+/**
+ * Choices shown side by side as one control, with one selected, like Disadvantage,
+ * Normal and Advantage. Built from native radio buttons, so arrow keys move between
+ * them and screen readers announce a group of options.
+ */
+export function createSegmentedControl(
+	parent: HTMLElement,
+	label: string,
+	options: { value: string; label: string }[],
+	selected: string,
+	onChange: (value: string) => void,
+): HTMLElement {
+	const name = `dicelist-segmented-${++segmentedCount}`;
+	const group = parent.createDiv({ cls: 'dicelist-segmented', attr: { role: 'radiogroup', 'aria-label': label } });
+	for (const option of options) {
+		const item = group.createEl('label', { cls: 'dicelist-segment' });
+		const input = item.createEl('input', { type: 'radio', attr: { name, value: option.value } });
+		input.checked = option.value === selected;
+		item.createSpan({ text: option.label });
+		input.addEventListener('change', () => { if (input.checked) onChange(option.value); });
+	}
+	return group;
+}
+
 /**
  * A small native dialog for one roll: an optional modifier, plus advantage or
  * disadvantage (d20 rolls) or a critical hit (damage). Enter rolls; bad values are explained.
@@ -271,13 +297,12 @@ class OneRollModal extends Modal {
 			});
 
 		if (this.kind === 'd20') {
-			new Setting(this.contentEl)
-				.setName('Roll')
-				.addDropdown(dropdown => dropdown
-					.addOption('', 'Normal')
-					.addOption('advantage', 'With advantage')
-					.addOption('disadvantage', 'With disadvantage')
-					.onChange(choice => { change.advantage = (choice || undefined) as Advantage | undefined; }));
+			const setting = new Setting(this.contentEl).setName('Roll');
+			createSegmentedControl(setting.controlEl, 'Roll', [
+				{ value: 'disadvantage', label: 'Disadvantage' },
+				{ value: '', label: 'Normal' },
+				{ value: 'advantage', label: 'Advantage' },
+			], '', choice => { change.advantage = (choice || undefined) as Advantage | undefined; });
 		} else {
 			new Setting(this.contentEl)
 				.setName('Critical hit')
