@@ -34,7 +34,9 @@ speed: 30 ft
 
 1. **Proficiency bonus**: +2 at levels 1 to 4, rising by 1 every four levels to +6 at 17.
    Without a level, the [stats](stats.md) block's `proficiencyBonus` is used, or +2.
-2. **Armor class** and **speed**, as written.
-3. **Initiative**: your Dexterity modifier, with a Roll button. Modifiers can apply to it
+2. **Armor class**: as written, plus flat bonuses from active modifiers with the
+   `armor class` category, such as equipped [items](inventory.md#equipment). The card lists them.
+3. **Speed**, as written.
+4. **Initiative**: your Dexterity modifier, with a Roll button. Modifiers can apply to it
    with the `initiative` category.
-4. **Passive Perception**: 10 plus your Perception skill bonus from the [skills](skills.md) block.
+5. **Passive Perception**: 10 plus your Perception skill bonus from the [skills](skills.md) block.

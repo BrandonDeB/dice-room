@@ -28,7 +28,7 @@ description: Concentration, up to 1 minute
 | `name` | Yes | The name rolls subscribe to. Not case sensitive. Must be unique for the character. |
 | `value` | Yes | Dice like `1d4`, a number like `+2` or `-1`, both like `1d4+1`, or `advantage` or `disadvantage`. Dice cannot be subtracted. Can use [note properties](../rolls.md#using-note-properties-in-dice), like `+{{Characters/Aria.proficiency}}`. |
 | `active` | No | Whether it is switched on. Defaults to off. The switch saves this for you. |
-| `appliesTo` | No | Roll [categories](../rolls.md#categories) it applies to automatically, such as `attack` or `damage`. Without it, the modifier only applies to rolls that name it. |
+| `appliesTo` | No | Roll [categories](../rolls.md#categories) it applies to automatically, such as `attack` or `damage`. `armor class` raises the [character](character.md) block's armor class. Without it, the modifier only applies to rolls that name it. |
 | `description` | No | Shown under the name. |
 
 ## Actions

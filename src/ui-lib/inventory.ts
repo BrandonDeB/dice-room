@@ -1,5 +1,7 @@
 import { Notice, Setting } from 'obsidian';
-import { createCard } from './native';
+import { createCallout, createCard } from './native';
+import { Modifier } from '../modifiers';
+import { ModifierFields, modifierFromFields } from './published-modifiers';
 import { BaseAttributes, BaseComponent, ComponentMetadata} from './base-component';
 import { Persistable, YamlStep } from './capabilities';
 import { ActionError, ActionMap, optionalPositiveInt, requireString } from './actions';
@@ -9,7 +11,30 @@ type InventoryItem = {
 	quantity: number;
 	/** Optional, shown under the item's name. */
 	description?: string;
+	/** Whether it's worn or wielded. Its modifiers only apply while equipped. */
+	equipped?: boolean;
+	/** True for items that need attunement: their modifiers also need `attuned`. */
+	attunement?: boolean;
+	attuned?: boolean;
+	/** Modifiers the item gives, written like a spell's `publishes` list. */
+	modifiers?: ModifierFields[];
 };
+
+/** A character can be attuned to at most three items. */
+const MAX_ATTUNED = 3;
+
+/** Whether an item's modifiers apply: equipped, and attuned if it needs attunement. */
+function itemIsActive(item: InventoryItem): boolean {
+	return item.equipped === true && (item.attunement !== true || item.attuned === true);
+}
+
+/** Items publish their modifiers, switched on only while the item is active. */
+function itemModifiers(attrs: InventoryAttributes): Modifier[] {
+	return (attrs?.items ?? []).flatMap(item => (Array.isArray(item.modifiers) ? item.modifiers : [])
+		.map(modifierFromFields)
+		.filter((modifier): modifier is Modifier => modifier !== null)
+		.map(modifier => ({ ...modifier, active: itemIsActive(item) })));
+}
 
 export interface InventoryAttributes extends BaseAttributes {
 	items: InventoryItem[];
@@ -90,8 +115,9 @@ export class InventoryComponent extends BaseComponent<InventoryAttributes> imple
 	static readonly metadata: ComponentMetadata = {
 		type: "inventory",
 		label: "Inventory",
-		policies: ["unique"],
+		policies: ["unique", "uniqueModifierNames"],
 		actions: inventoryActions,
+		modifiers: itemModifiers,
 	}
 
 	onPersist: (steps: YamlStep[]) => Promise<void>;
@@ -141,6 +167,11 @@ export class InventoryComponent extends BaseComponent<InventoryAttributes> imple
 			return;
 		}
 
+		const attuned = this.attributes.items.filter(item => item.attuned === true).length;
+		if (attuned > MAX_ATTUNED) {
+			createCallout(card, 'warning', `Attuned to ${attuned} items`, `A character can be attuned to at most ${MAX_ATTUNED}.`);
+		}
+
 		this.attributes.items.forEach((item, index) => {
 			const row = new Setting(card).setName(item.name);
 			if (typeof item.description === 'string' && item.description.trim() !== '') {
@@ -160,6 +191,23 @@ export class InventoryComponent extends BaseComponent<InventoryAttributes> imple
 						if (ev.key === 'Enter') text.inputEl.blur();
 					});
 				});
+
+			// Equipment: switches for items that give modifiers or need attunement.
+			if (Array.isArray(item.modifiers) || item.equipped !== undefined || item.attunement) {
+				this.addSwitch(row, item, index, 'equipped', 'Equipped');
+			}
+			if (item.attunement) this.addSwitch(row, item, index, 'attuned', 'Attuned');
+		});
+	}
+
+	/** A labelled on/off switch for one of an item's flags, saved to its YAML. */
+	private addSwitch(row: Setting, item: InventoryItem, index: number, field: 'equipped' | 'attuned', label: string) {
+		row.addToggle(toggle => {
+			toggle.toggleEl.setAttr('aria-label', `${item.name} ${label.toLowerCase()}`);
+			toggle
+				.setValue(item[field] === true)
+				.setTooltip(label)
+				.onChange(value => void this.onPersist([{ op: 'set', path: ['items', index, field], value }]));
 		});
 	}
 

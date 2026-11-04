@@ -2,8 +2,8 @@ import { Setting } from 'obsidian';
 import { BaseAttributes, BaseComponent, ComponentMetadata } from './base-component';
 import { Rollable } from './capabilities';
 import { Roll, generatedRoll } from '../roll';
-import { addRollMenu, advantageChoices, createCallout, createCard, formatBonus } from './native';
-import { Advantage } from '../modifiers';
+import { addRollMenu, advantageChoices, createCallout, createCard, formatBonus, renderModifierList } from './native';
+import { Advantage, modifiersForCategories } from '../modifiers';
 import { d20, loadSheet, proficiencyForLevel } from '../sheet';
 
 export interface CharacterAttributes extends BaseAttributes {
@@ -41,6 +41,21 @@ export class CharacterComponent extends BaseComponent<CharacterAttributes> imple
 			return;
 		}
 		this.guard(this.renderWithSheet());
+		// Armor class, initiative and passive Perception depend on other blocks: redraw when they change.
+		this.onCharacterChange(() => {
+			this.containerEl.empty();
+			this.guard(this.renderWithSheet());
+		});
+	}
+
+	/** Armor class, plus flat bonuses from active modifiers with the `armor class` category. */
+	private async renderArmorClass(card: HTMLElement, armorClass: unknown) {
+		const bonuses = (await modifiersForCategories(this.ctx, ['armor class']))
+			.filter(modifier => modifier.value.valid && modifier.value.dice.length === 0);
+		const total = bonuses.reduce((sum, modifier) => sum + (modifier.value.valid ? modifier.value.flat : 0), Number(armorClass) || 0);
+		const row = new Setting(card).setName('Armor class');
+		row.controlEl.createSpan({ cls: 'dicelist-detail-value', text: String(total) });
+		renderModifierList(row.descEl, 'Includes', bonuses, 'roll-modifiers', this.ctx.sourcePath, this);
 	}
 
 	private async renderWithSheet() {
@@ -55,7 +70,7 @@ export class CharacterComponent extends BaseComponent<CharacterAttributes> imple
 			new Setting(card).setName(label).controlEl.createSpan({ cls: 'dicelist-detail-value', text: value });
 
 		detail('Proficiency bonus', formatBonus(level !== null ? proficiencyForLevel(level) : sheet.proficiencyBonus));
-		if (armorClass !== undefined) detail('Armor class', String(armorClass));
+		if (armorClass !== undefined) await this.renderArmorClass(card, armorClass);
 		if (speed !== undefined) detail('Speed', String(speed));
 
 		const initiative = sheet.abilityModifier('Dexterity');

@@ -33,6 +33,38 @@ Item names should be unique. If two items share a name, you will see a warning.
 Type a new number in an item's box, then press Enter or click away.
 The change is saved into the note's YAML.
 
+## Equipment
+
+Items can give [modifiers](modifier.md) while you wear or wield them, such as a +1 to armor
+class and saving throws. Add these fields to an item:
+
+| Field | Description |
+| --- | --- |
+| `equipped` | Whether it's worn or wielded. The card shows an **Equipped** switch. |
+| `attunement` | `true` for items that need attunement. The card adds an **Attuned** switch. |
+| `attuned` | Whether you're attuned to it. |
+| `modifiers` | The modifiers it gives, written like a spell's [`publishes`](attacks.md#publishing-modifiers) list. |
+
+An item's modifiers apply only while it's equipped, and attuned if it needs attunement.
+Otherwise rolls list them as switched off. More than three attuned items shows a warning.
+
+```yaml
+type: inventory
+items:
+  - name: Cloak of Protection
+    quantity: 1
+    equipped: true
+    attunement: true
+    attuned: true
+    modifiers:
+      - name: Cloak of Protection
+        value: 1
+        appliesTo: [armor class, save]
+```
+
+Modifiers with the `armor class` category raise the [character](character.md) block's
+armor class. Only flat numbers count there, not dice.
+
 ## Actions
 
 Other components can run these actions on the inventory.
