@@ -27,3 +27,6 @@ package-lock.json
 
 # Local Obsidian vault for trying out the plugin (see docs/developers/test-vault.md)
 test-vault/
+
+# The docs site, built by mkdocs build
+site/

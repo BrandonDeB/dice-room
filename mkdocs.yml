@@ -1,0 +1,74 @@
+site_name: Dice Room
+site_description: Roll 3D dice with friends and build interactive character sheets in Obsidian.
+repo_url: https://github.com/BrandonDeB/dice-room
+repo_name: BrandonDeB/dice-room
+edit_uri: edit/master/docs/
+
+# Obsidian's settings folder, if the docs are opened as a vault.
+exclude_docs: |
+  .obsidian/
+
+theme:
+  name: material
+  palette:
+    # Follow the reader's system setting, with a switch for light and dark.
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep purple
+      accent: deep purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep purple
+      accent: deep purple
+      toggle:
+        icon: material/brightness-4
+        name: Follow system setting
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - search.highlight
+    - content.code.copy
+    - content.action.edit
+
+nav:
+  - Home: index.md
+  - Guides:
+      - Getting started: getting-started.md
+      - Character sheets: character-sheets.md
+      - Values and formulas: formulas.md
+      - Rolls, effects and modifiers: rolls.md
+      - Events: events.md
+      - Example sheet: example-sheet.md
+  - Components:
+      - Fields: components/fields.md
+      - Values: components/values.md
+      - Modifiers: components/modifiers.md
+      - Consumables: components/consumables.md
+      - Inventory: components/inventory.md
+      - Health: components/health.md
+      - Events: components/events.md
+  - For developers:
+      - Components and actions: developers/components-and-actions.md
+      - Test vault: developers/test-vault.md
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+
+# Report broken links between pages and to headings; `mkdocs build --strict` fails on them.
+validation:
+  links:
+    not_found: warn
+    anchors: warn
