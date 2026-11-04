@@ -26,6 +26,7 @@ In reading view or live preview, the block becomes an interactive panel. Click i
 | [`rest`](components/rest.md) | Short and long rest buttons | No |
 | [`health`](components/health.md) | Hit points, hit dice and death saves | Yes |
 | [`character`](components/character.md) | Level, proficiency bonus, armor class and more | Yes |
+| [`conditions`](components/conditions.md) | Conditions and exhaustion | Yes |
 
 ## Linking notes to a character
 

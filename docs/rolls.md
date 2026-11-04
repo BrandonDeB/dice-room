@@ -110,13 +110,14 @@ higher or lower one counts. This works on attack hit rolls, ability checks, savi
 skills and initiative.
 
 A [modifier](components/modifier.md) can grant advantage or disadvantage too, by using
-`advantage` or `disadvantage` as its value. For example, being poisoned:
+`advantage` or `disadvantage` as its value. The [conditions](components/conditions.md) block
+does this for you. As a modifier of your own, for example:
 
 ```yaml
 type: modifier
-name: Poisoned
+name: Bane
 value: disadvantage
-appliesTo: [attack, check]
+appliesTo: [attack, save]
 ```
 
 Advantage and disadvantage cancel out: with both, the roll is normal.
