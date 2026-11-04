@@ -304,3 +304,64 @@ If your plugin does not need CSS, delete this file.
 .dicelist-segmented button {
 	font-size: var(--font-ui-smaller);
 }
+
+/* Hit points: big numbers over a bar that changes color as they drop. */
+.dicelist-health {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+}
+
+.dicelist-health-header {
+	display: flex;
+	align-items: baseline;
+	gap: var(--size-4-2);
+	font-variant-numeric: tabular-nums;
+}
+
+.dicelist-health-current {
+	font-size: var(--font-ui-large);
+	font-weight: var(--font-bold);
+}
+
+.dicelist-health-max {
+	color: var(--text-muted);
+}
+
+.dicelist-health-temp {
+	margin-inline-start: auto;
+	color: var(--color-blue);
+	font-size: var(--font-ui-smaller);
+}
+
+.dicelist-health-bar {
+	display: flex;
+	height: 0.75em;
+	border-radius: var(--radius-l);
+	background-color: var(--background-modifier-border);
+	overflow: hidden;
+	--dicelist-health-color: var(--color-green);
+}
+
+.dicelist-health-bar.is-hurt {
+	--dicelist-health-color: var(--color-yellow);
+}
+
+.dicelist-health-bar.is-low,
+.dicelist-health-bar.is-down {
+	--dicelist-health-color: var(--color-red);
+}
+
+.dicelist-health-fill,
+.dicelist-health-fill-temp {
+	width: var(--dicelist-health-width);
+	transition: width 0.3s ease;
+}
+
+.dicelist-health-fill {
+	background-color: var(--dicelist-health-color);
+}
+
+.dicelist-health-fill-temp {
+	background-color: var(--color-blue);
+}

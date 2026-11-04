@@ -28,6 +28,10 @@ The card saves `current` and `temp` for you.
 
 ## Using the card
 
+The card shows your hit points as "30 / 38" over a bar that's green when you're healthy,
+yellow at half or less, and red at a quarter or less. Temporary hit points show as a blue
+section at the end of the bar. Screen readers read the bar as "30 of 38 hit points, 5 temporary".
+
 Type an amount, then choose **Damage**, **Heal** or **Temp**. Temporary hit points absorb
 damage first, and don't stack: the higher amount is kept.
 

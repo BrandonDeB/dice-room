@@ -103,7 +103,40 @@ const healthActions: ActionMap<HealthFields> = {
 	},
 };
 
-/** Hit points and temporary hit points, with Damage, Heal and Temp buttons. */
+/**
+ * "30 / 38" with a bar that fills with hit points: green when healthy, yellow at half
+ * or less, red at a quarter or less. Temporary hit points are a blue section after it.
+ * The bar is a meter for screen readers, read as "30 of 38 hit points, 5 temporary".
+ */
+function renderBar(parent: HTMLElement, health: Health) {
+	const el = parent.createDiv({ cls: 'dicelist-card-content dicelist-health' });
+	const header = el.createDiv({ cls: 'dicelist-health-header', attr: { 'aria-hidden': 'true' } });
+	header.createSpan({ cls: 'dicelist-health-current', text: String(health.current) });
+	header.createSpan({ cls: 'dicelist-health-max', text: `/ ${health.max}` });
+	if (health.temp > 0) header.createSpan({ cls: 'dicelist-health-temp', text: `+${health.temp} temporary` });
+
+	const ratio = health.current / health.max;
+	const level = health.current === 0 ? 'is-down' : ratio <= 0.25 ? 'is-low' : ratio <= 0.5 ? 'is-hurt' : 'is-healthy';
+	// Temporary hit points stretch the bar past the max, so both always show.
+	const scale = Math.max(health.max, health.current + health.temp);
+	const bar = el.createDiv({
+		cls: ['dicelist-health-bar', level],
+		attr: {
+			role: 'meter',
+			'aria-label': 'Hit points',
+			'aria-valuemin': '0',
+			'aria-valuemax': String(health.max),
+			'aria-valuenow': String(health.current),
+			'aria-valuetext': summary(health),
+		},
+	});
+	bar.createDiv({ cls: 'dicelist-health-fill' }).setCssProps({ '--dicelist-health-width': `${(health.current / scale) * 100}%` });
+	if (health.temp > 0) {
+		bar.createDiv({ cls: 'dicelist-health-fill-temp' }).setCssProps({ '--dicelist-health-width': `${(health.temp / scale) * 100}%` });
+	}
+}
+
+/** Hit points and temporary hit points, as a bar, with Damage, Heal and Temp buttons. */
 export const healthComponent: CardComponent<HealthFields> = {
 	key: 'health',
 	label: 'Health',
@@ -138,9 +171,11 @@ export const healthComponent: CardComponent<HealthFields> = {
 			if (!Number.isInteger(value) || value < 1) new Notice('Enter a whole number of 1 or more first.');
 			else act(action, value);
 		};
+		renderBar(view.el, health);
+
 		new Setting(view.el)
-			.setName(`${health.current} of ${health.max} hit points`)
-			.setDesc(health.temp > 0 ? `${health.temp} temporary hit points` : 'Enter an amount, then choose what happens.')
+			.setName('Change hit points')
+			.setDesc('Enter an amount, then choose what happens.')
 			.addText(text => {
 				amountInput = text.inputEl;
 				text.inputEl.type = 'number';
@@ -148,7 +183,7 @@ export const healthComponent: CardComponent<HealthFields> = {
 				text.inputEl.addClass('dicelist-quantity');
 				text.inputEl.setAttr('aria-label', 'Amount');
 			})
-			.addButton(button => button.setButtonText('Damage').onClick(() => apply('damage')))
+			.addButton(button => button.setButtonText('Damage').setWarning().onClick(() => apply('damage')))
 			.addButton(button => button.setButtonText('Heal').onClick(() => apply('heal')))
 			.addButton(button => button.setButtonText('Temp').setTooltip('Gain temporary hit points').onClick(() => apply('temp')));
 	},
