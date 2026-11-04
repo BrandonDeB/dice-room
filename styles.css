@@ -191,6 +191,58 @@ If your plugin does not need CSS, delete this file.
 	padding: var(--size-4-2) var(--size-4-3);
 }
 
+/* Tiles with rolls inside, like abilities: narrower, so six fit on a row. */
+.dicelist-tile-grid {
+	grid-template-columns: repeat(auto-fill, minmax(6.5em, 1fr));
+}
+
+/* Clicking the tile makes its roll; the buttons inside make the others. */
+.dicelist-roll-tile {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-3);
+	min-width: 0;
+	padding: var(--size-4-2) var(--size-2-3);
+	border-radius: var(--radius-m);
+	background-color: var(--background-primary);
+	cursor: var(--cursor-link, pointer);
+}
+
+.dicelist-roll-tile:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.dicelist-roll-tile:focus-visible {
+	box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+	outline: none;
+}
+
+.dicelist-roll-tile.is-disabled {
+	opacity: 0.6;
+	cursor: default;
+}
+
+.dicelist-roll-tile-header {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+}
+
+.dicelist-roll-tile .dicelist-roll-button {
+	justify-content: center;
+	gap: var(--size-2-2);
+	min-width: 0;
+	padding: var(--size-2-2) var(--size-2-3);
+	overflow: hidden;
+	white-space: nowrap;
+}
+
+/* A roll that belongs to the one above it, like a save under its ability. */
+.dicelist-nested-roll {
+	padding-inline-start: var(--size-4-6);
+}
+
 /* A value's tile looks like a roll button, without being one. */
 .dicelist-value-tile {
 	display: flex;

@@ -36,6 +36,8 @@ Each roll has:
 | `effects` | No | What happens when it's used. See [effects](#effects). |
 | `description` | No | Shown under the name. |
 | `button` | No | The button's text. Defaults to **Roll**, or **Use** without dice. |
+| `value` | No | A formula shown with the name, such as an ability score. |
+| `rolls` | No | Rolls that belong with this one, like an ability's save. See [rolls inside rolls](#rolls-inside-rolls). |
 
 Each row shows the dice it will throw with modifiers included, which modifiers those are,
 and what its effects will do. These update whenever any of the character's notes change.
@@ -43,6 +45,26 @@ and what its effects will do. These update whenever any of the character's notes
 With `layout: grid` on the card, rolls show as a grid of buttons, like a skill list, and
 a d20 roll shows only its bonus, such as **Stealth +5**. Everything a row would show is
 read out with the button and shown as its tooltip.
+
+## Rolls inside rolls
+
+A roll can hold rolls that belong with it, written like any other roll. An ability's check
+can hold its save:
+
+```yaml
+layout: grid
+rolls:
+  - name: DEX
+    value: "{{dex}}"
+    dice: 1d20 + {{dex mod}}
+    categories: [check, dexterity]
+    rolls:
+      - { name: Save, dice: "1d20 + {{dex mod}} + {{proficiency}}", categories: [save, dexterity] }
+```
+
+In a grid, this is a tile reading **DEX 17 (+3)**: click the tile, or press Enter on it, for
+the check, and its **Save +6** button for the save. Without a grid, the inner rolls are
+indented rows under it. Rolls inside rolls can't hold more rolls.
 
 ## Buttons without dice
 
@@ -220,7 +242,8 @@ Archery (+2) on, `1d20+5` becomes `1d20+1d4+7`. A modifier that comes to nothing
 exhaustion at level 0, isn't listed.
 
 Rolls show a line such as "Includes: Bless (1d4), Archery (+2)". Modifiers the roll would
-use but that are switched off are listed as "Off: Bless (1d4)". Each name links to where
+use but that are switched off are listed as "Off: Bless (1d4)", unless the modifier has
+`showWhenOff: false`. Each name links to where
 the modifier is set: click to open it, or hover for a preview where you can switch it on.
 
 ### When a roll refuses

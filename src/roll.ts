@@ -21,6 +21,10 @@ export interface Roll {
 	description?: string;
 	/** The button's text. Defaults to Roll, or Use without dice. */
 	button?: string;
+	/** A formula shown with the name, such as an ability score: "16 (+3)". */
+	value?: unknown;
+	/** Rolls that belong with this one, like an ability's save, drawn inside it. */
+	rolls?: Roll[];
 	/** Chosen when rolling: roll the d20 twice and keep the higher or lower. */
 	advantage?: Advantage;
 	/** Chosen when rolling: every die is doubled, as for a critical hit. */
@@ -30,13 +34,21 @@ export interface Roll {
 }
 
 /** Read one entry of a `rolls` list, or a message saying what's wrong with it. */
-export function parseRoll(entry: unknown): Roll | string {
+export function parseRoll(entry: unknown, nested = false): Roll | string {
 	if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return 'Each roll needs a name, and dice or effects.';
-	const { name, dice, effects, modifiers, categories, description, button } = entry as Record<string, unknown>;
+	const { name, dice, effects, modifiers, categories, description, button, value, rolls } = entry as Record<string, unknown>;
 	if (typeof name !== 'string' || name.trim() === '') return 'Each roll needs a name.';
 	if (dice != null && typeof dice !== 'string' && typeof dice !== 'number') return `"${name}" has dice that aren't a formula, like 1d20+3.`;
 	const parsedEffects = parseEffects(effects);
 	if (dice == null && parsedEffects.length === 0) return `"${name}" needs dice, effects, or both.`;
+	if (rolls != null && nested) return `"${name}" is inside another roll, so it can't have rolls of its own.`;
+	if (rolls != null && !Array.isArray(rolls)) return `"${name}" has rolls that aren't a list.`;
+	const children: Roll[] = [];
+	for (const child of (rolls as unknown[] | undefined) ?? []) {
+		const parsed = parseRoll(child, true);
+		if (typeof parsed === 'string') return `In "${name}": ${parsed}`;
+		children.push(parsed);
+	}
 	return {
 		name: name.trim(),
 		dice: dice ?? undefined,
@@ -45,6 +57,8 @@ export function parseRoll(entry: unknown): Roll | string {
 		categories: nameList(categories),
 		description: typeof description === 'string' ? description : undefined,
 		button: typeof button === 'string' && button.trim() !== '' ? button.trim() : undefined,
+		value: value ?? undefined,
+		rolls: children.length > 0 ? children : undefined,
 	};
 }
 
