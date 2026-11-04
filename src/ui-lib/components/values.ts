@@ -119,7 +119,7 @@ export const valuesComponent: CardComponent<ValueEntry[]> = {
 					name, show: (total) => {
 						valueEl.setText(total);
 						// Obsidian shows the label as the tooltip, so the description goes in it too.
-						tile.setAttr('aria-label', [`${name}, ${total}`, description].filter(Boolean).join('. '));
+						tile.setAttr('aria-label', [`${name}: ${total}`, description].filter(Boolean).join('\n'));
 					},
 				});
 				return;

@@ -55,8 +55,9 @@ function addMenu(view: ComponentView, el: HTMLElement, line: Partial<RollLine>) 
 }
 
 /**
- * Everything a row would show, as one sentence, for a tile's label. Obsidian shows the
- * label as the tile's tooltip, so it's the only tooltip: no `title` as well.
+ * Everything a row would show, a line each, for a tile's label: the name, the dice,
+ * then "Includes:", "Off:" and each effect. Obsidian shows the label as the tile's
+ * tooltip, keeping the line breaks, so it's the only tooltip: no `title` as well.
  */
 function spokenDetails(prefix: string, roll: Roll, { notation, value, advantage, draw }: RollDetails): string {
 	const scratch = createDiv();
@@ -67,8 +68,8 @@ function spokenDetails(prefix: string, roll: Roll, { notation, value, advantage,
 		notation ? readableNotation(notation) : '',
 		advantage ? `with ${advantage}` : '',
 		roll.description ?? '',
-		scratch.textContent ?? '',
-	].filter(Boolean).join(', ');
+		...Array.from(scratch.children, line => line.textContent ?? ''),
+	].filter(Boolean).join('\n');
 }
 
 /** A row for a roll: its dice with modifiers, what its effects will do, and a button. */
