@@ -1,3 +1,5 @@
+import { createCallout } from './native';
+
 /** A readable message from anything that was thrown. */
 export function errorMessage(err: unknown): string {
 	if (err instanceof Error) return err.message;
@@ -11,11 +13,9 @@ export function errorMessage(err: unknown): string {
 
 /**
  * Show why a dicelist block can't be displayed, in place of the block, so problems
- * are visible instead of the block silently disappearing.
+ * are visible instead of the block silently disappearing. Drawn as an error callout.
+ * Returns the callout's content element.
  */
 export function renderBlockError(el: HTMLElement, title: string, detail?: string): HTMLElement {
-	const box = el.createDiv({ cls: 'dicelist-error' });
-	box.createEl('strong', { text: title });
-	if (detail) box.createEl('p', { cls: 'dicelist-error-detail', text: detail });
-	return box;
+	return createCallout(el, 'error', title, detail);
 }

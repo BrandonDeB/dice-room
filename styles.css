@@ -7,121 +7,10 @@ If your plugin does not need CSS, delete this file.
 
 */
 
-/* Skills Components */
-.skill-full-container {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-	/* one background paints every line: gaps show through as the interior
-	   lines, padding as the perimeter - so all of them match exactly */
-	gap: 2px;
-	padding: 2px;
-	background: rgba(255, 255, 255, 0.4);
-	border-radius: 2px;
-	cursor: pointer;
-}
-
-.skill-container {
-    display: flex;
-    align-items: center;
-	justify-content: space-between;
-	gap: 0.5rem;
-	background: var(--background-primary); /* must be opaque to mask the lines */
-	cursor: pointer;
-	padding: 0.5rem;
-}
-
-.skill-container h4,
-.skill-container p {
-    margin: 0;
-}
-
-.modifier-wrapper {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-}
-
-/* Inventory Components */
-.inv-container {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 0.5rem;
-}
-
-/* Abilities Components */
-.ability-full-container {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	/* same single-background trick as .skill-full-container */
-	gap: 2px;
-	width: 100%;
-	padding: 2px;
-	background: rgba(255, 255, 255, 0.4);
-	border-radius: 2px;
-}
-
-.ability-container {
-	align-items: center;
-	text-align: center;
-	flex: 1;
-	border-radius: 2px;
-	background: var(--background-primary);
-	cursor: pointer;
-}
-
-.component-container {
-	border: 2px solid rgba(255, 255, 255, 0.4);
-	padding: 9px;
-}
-
-.roll-components {
-	display: block;
-	width: 50%;
-	justify-self: center;
-	justify-content: space-between;
-	align-self: center;
-}
-
-.image-rolls {
-	display: flex;
-	width: 100%;
-}
-
-.attack-img {
-	width: 50%;
-	display: block;
-}
-
-.drawer-item {
-	display: flex;
-	justify-content: space-between;
-}
-
-.roller-button {
-	align-self: center;
-	justify-self: center;
-}
-
 .header {
 	position: sticky;
 	top: 0;
 	z-index: 20;
-}
-
-.checkbox-input {
-	top: 0;
-	left: 0;
-	width: 100%;
-	height: 100%;
-	margin: 0;
-}
-
-.roll-wrapper {
-	display: flex;
-	align-items: center;
-	gap: 8px;
 }
 
 .dice-parent {
@@ -149,12 +38,10 @@ If your plugin does not need CSS, delete this file.
 	flex-direction: column;
 }
 
+/* The settings preview sits inside a native settings group, which frames it. */
 .preview-roller {
 	height: 40%;
 	width: 100%;
-	margin: 0.75em 0;
-	outline: 2px solid rgba(255, 255, 255, 0.4);
-	border-radius: 2px;
 	position: relative;
 }
 
@@ -197,37 +84,68 @@ If your plugin does not need CSS, delete this file.
 	border: none;
 }
 
-#rollBtn {
-	position: relative;
-	cursor: pointer;
-	z-index: 2;
+/*
+ * Dicelist components. Built from Obsidian's own components (settings rows, buttons,
+ * toggles, callouts) and theme variables, so they follow the user's theme.
+ */
+
+/* Cards are Obsidian setting groups. Let them use the note's full width (groups are
+   capped at 700px by default, for the settings window). */
+.dicelist-card {
+	--setting-group-max-width: 100%;
 }
 
-#roll-input {
-	position: relative;
-	z-index: 2;
+/* A little room above each card's heading. */
+.dicelist-card > .setting-item-heading {
+	padding-top: var(--size-4-3);
 }
 
-#user-list {
-	position: relative;
-	z-index: 2;
+/* The component type badge next to a card's name, e.g. "Weapon". */
+.dicelist-type {
+	vertical-align: middle;
 }
 
-/* Shown in place of a component that breaks a policy, such as a duplicate inventory */
-.dicelist-error {
-	border: 2px solid var(--text-error);
-	border-radius: 4px;
-	padding: 8px 12px;
-	color: var(--text-error);
+/* Non-row content inside a card (description, picture, button grids) gets the same
+   padding as the rows around it. */
+.dicelist-card .dicelist-card-content {
+	margin: 0;
+	padding: var(--setting-items-padding-y, var(--size-4-3)) var(--setting-items-padding-x, var(--size-4-4));
 }
 
-.dicelist-error ul {
-	margin: 4px 0 0;
+/* Callouts inside a card keep their own padding and line up with the rows. */
+.dicelist-card .setting-items > .dicelist-callout {
+	margin: var(--size-4-2) var(--setting-items-padding-x, var(--size-4-4));
 }
 
-/* Modifiers */
+.dicelist-card-description {
+	color: var(--text-muted);
+}
+
+/* A card's picture, on the right of its heading. The heading row centers the
+   title beside it vertically. */
+.dicelist-card > .setting-item-heading {
+	align-items: center;
+}
+
+.dicelist-card-image {
+	display: block;
+	max-height: 96px;
+	max-width: 160px;
+	border-radius: var(--radius-m);
+	object-fit: cover;
+}
+
+.dicelist-detail-value {
+	color: var(--text-muted);
+}
+
+.dicelist-quantity {
+	width: 5em;
+	text-align: right;
+}
+
+/* A roll's modifier line under its total, or why it can't be rolled. */
 .roll-modifiers {
-	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
 }
 
@@ -235,11 +153,68 @@ If your plugin does not need CSS, delete this file.
 	color: var(--text-error);
 }
 
-.dicelist-error-detail {
-	margin: 4px 0 0;
-	color: var(--text-normal);
+.roll-modifiers-off {
+	color: var(--text-faint);
 }
 
-.published-modifiers {
-	margin: 0.5em 0;
+/* Links to where a modifier is set: colored like Obsidian's internal links. */
+.dicelist-link {
+	color: var(--link-color);
+	text-decoration: var(--link-decoration);
+	cursor: var(--cursor-link, pointer);
+}
+
+.dicelist-link:hover {
+	color: var(--link-color-hover);
+	text-decoration: var(--link-decoration-hover);
+}
+
+.roll-modifiers-off .dicelist-link {
+	color: var(--text-muted);
+}
+
+/* Grids of native buttons for abilities and skills. */
+.dicelist-roll-grid {
+	display: grid;
+	gap: var(--size-4-2);
+}
+
+.dicelist-abilities {
+	grid-template-columns: repeat(auto-fit, minmax(5.5em, 1fr));
+}
+
+.dicelist-skills {
+	grid-template-columns: repeat(auto-fill, minmax(11em, 1fr));
+}
+
+.dicelist-roll-button {
+	height: auto;
+	padding: var(--size-4-2) var(--size-4-3);
+}
+
+.dicelist-abilities .dicelist-roll-button {
+	flex-direction: column;
+	gap: var(--size-2-1);
+}
+
+.dicelist-skills .dicelist-roll-button {
+	justify-content: space-between;
+	gap: var(--size-4-2);
+}
+
+.dicelist-roll-button-label {
+	font-weight: var(--font-semibold);
+}
+
+.dicelist-roll-button-value {
+	color: var(--text-muted);
+	font-variant-numeric: tabular-nums;
+}
+
+.dicelist-callout {
+	margin: 0;
+}
+
+.dicelist-callout .callout-content ul {
+	margin: 0;
 }

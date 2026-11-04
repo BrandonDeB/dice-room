@@ -49,6 +49,8 @@ export type AppliedModifier = PublishedModifier & { value: ModifierValue };
 
 export interface ResolvedModifiers {
 	applied: AppliedModifier[];
+	/** Modifiers the roll would use, but that are switched off. */
+	inactive: PublishedModifier[];
 	problems: string[];
 	notation: string;
 }
@@ -191,7 +193,7 @@ export async function resolveRollModifiers(
 	const subscribed = (roll.modifiers ?? []).map(normalizeName);
 	const categories = new Set((roll.categories ?? []).map(normalizeName));
 	if (subscribed.length === 0 && categories.size === 0) {
-		return { applied: [], problems: [], notation: base };
+		return { applied: [], inactive: [], problems: [], notation: base };
 	}
 
 	const published = await findModifiers(ctx);
@@ -212,6 +214,7 @@ export async function resolveRollModifiers(
 		modifier.categories.some(category => categories.has(normalizeName(category))));
 
 	const applied: AppliedModifier[] = [];
+	const inactive: PublishedModifier[] = [];
 	const seen = new Set<string>();
 	for (const modifier of relevant) {
 		const key = normalizeName(modifier.name);
@@ -223,7 +226,10 @@ export async function resolveRollModifiers(
 			problems.push(`${sameName.length} modifiers are named "${modifier.name}" (${sameName.map(where).join('; ')}). Rename or remove one.`);
 			continue;
 		}
-		if (!modifier.active) continue;
+		if (!modifier.active) {
+			inactive.push(modifier);
+			continue;
+		}
 
 		const value = modifier.value;
 		if (!value.valid) {
@@ -237,5 +243,5 @@ export async function resolveRollModifiers(
 	if (notation === null) {
 		problems.push(`Modifiers can only be added to plain dice and numbers, not "${base}"`);
 	}
-	return { applied, problems, notation: notation ?? base };
+	return { applied, inactive, problems, notation: notation ?? base };
 }

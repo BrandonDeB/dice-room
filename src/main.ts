@@ -5,6 +5,7 @@ import { setApp } from './app-provider';
 import CodeBlock from './codeblock';
 import { registerComponents } from './ui-lib/register';
 import { DiceRoller } from './roll';
+import { HOVER_SOURCE } from './ui-lib/native';
 
 export default class DiceRoomPlugin extends Plugin {
 	settings: DiceRoomPluginSettings;
@@ -35,6 +36,9 @@ export default class DiceRoomPlugin extends Plugin {
 		this.addSettingTab(new DiceRollSettingTab(this.app, this));
 
 		registerComponents();
+
+		// Links in dicelist blocks (e.g. to where a modifier is set) show page previews.
+		this.registerHoverLinkSource(HOVER_SOURCE, { display: 'Dice Room', defaultMod: false });
 
 		const getDiceView = () =>
 			this.app.workspace.getLeavesOfType(VIEW_TYPE_DICE)[0]?.view as DiceView | undefined;

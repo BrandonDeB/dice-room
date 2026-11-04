@@ -7,6 +7,7 @@ import { applyYamlSteps } from "./ui-lib/actions";
 import { DiceRoller, performRoll } from "./roll";
 import { PolicyViolation, checkPolicies } from "./ui-lib/policies";
 import { errorMessage, renderBlockError } from "./ui-lib/block-error";
+import { createBlockLink } from "./ui-lib/native";
 
 function isRollable(
     component: BaseComponent<any>
@@ -74,30 +75,18 @@ export default class CodeBlock {
 
 	/** Show why the component cannot be displayed, linking to each block involved. */
 	private renderViolations(violations: PolicyViolation[]) {
-		const app = getApp();
 		const here = this.ctx.getSectionInfo(this.el)?.lineStart;
-		const box = this.el.createDiv({ cls: 'dicelist-error' });
 
 		for (const violation of violations) {
-			box.createEl('p', { text: violation.message });
-			const list = box.createEl('ul');
+			const content = renderBlockError(this.el, violation.message);
+			const list = content.createEl('ul');
 
 			for (const { file, location } of violation.blocks) {
 				const isThis = file.path === this.ctx.sourcePath && location.lineStart === here;
 				const item = list.createEl('li');
-				const link = item.createEl('a', {
-					text: `${file.basename}, line ${location.lineStart + 1}`,
-					cls: 'internal-link',
-					href: '#',
-				});
+				createBlockLink(item, `${file.basename}, line ${location.lineStart + 1}`,
+					{ file, line: location.lineStart }, this.ctx.sourcePath);
 				if (isThis) item.appendText(' (this block)');
-
-				link.addEventListener('click', (ev) => {
-					ev.preventDefault();
-					void app.workspace.openLinkText(file.path, this.ctx.sourcePath, false, {
-						eState: { line: location.lineStart },
-					});
-				});
 			}
 		}
 	}

@@ -2,6 +2,7 @@ import { App, AbstractInputSuggest, Notice, TextComponent, PluginSettingTab, Set
 import DiceRoomPlugin from './main';
 import { DiceBox, TEXTURELIST, MATERIALTYPES } from '@3d-dice/dice-box-threejs';
 import { CustomDice } from './types';
+import { createSettingGroup } from './ui-lib/native';
 
 export interface DiceRoomPluginSettings {
 	serverAddress: string;
@@ -97,10 +98,10 @@ export class DiceRollSettingTab extends PluginSettingTab {
 
 		containerEl.empty();
 
-		new Setting(containerEl).setName("Connection Configuration").setHeading();
+		const connection = createSettingGroup(containerEl, 'Connection');
 
-		new Setting(containerEl)
-			.setName('Backend Server Address')
+		new Setting(connection)
+			.setName('Backend server address')
 			.setDesc('Put address to host')
 			.addText(text => text
 				.setPlaceholder('Enter the address')
@@ -110,8 +111,8 @@ export class DiceRollSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 
-		new Setting(containerEl)
-			.setName('Display Name')
+		new Setting(connection)
+			.setName('Display name')
 			.setDesc('The name that will show to other room members')
 			.addText(text => text
 				.setPlaceholder('Enter your name')
@@ -121,10 +122,10 @@ export class DiceRollSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 
-		new Setting(containerEl).setName("Dice Customization").setHeading();
+		const dice = createSettingGroup(containerEl, 'Customization');
 
-		new Setting(containerEl)
-			.setName('Dice Background Color')
+		new Setting(dice)
+			.setName('Dice background color')
 			.setDesc('Main color of dice')
 			.addColorPicker(value =>  { value
 				.setValue(this.plugin.settings.backColor)
@@ -134,9 +135,9 @@ export class DiceRollSettingTab extends PluginSettingTab {
 				})
 			})
 
-		new Setting(containerEl)
-			.setName('Dice Foreground Color')
-			.setDesc('Text Color on Dice')
+		new Setting(dice)
+			.setName('Dice foreground color')
+			.setDesc('Text color on dice')
 			.addColorPicker(value =>  { value
 				.setValue(this.plugin.settings.frontColor)
 				.onChange(async (value) => {
@@ -144,9 +145,9 @@ export class DiceRollSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				})
 			})
-		
-		new Setting(containerEl)
-			.setName("Dice Texture")
+
+		new Setting(dice)
+			.setName("Dice texture")
 			.setDesc("Choose a texture to use for new dice color sets")
 			.addText((text) => {
 				text.setPlaceholder("Search textures…")
@@ -160,8 +161,8 @@ export class DiceRollSettingTab extends PluginSettingTab {
 				new TextureSuggest(this.app, text.inputEl);
 			});
 
-		new Setting(containerEl)
-			.setName("Dice Texture Opacity")
+		new Setting(dice)
+			.setName("Dice texture opacity")
 			.setDesc("How strongly the texture shows over the dice color")
 			.addSlider((slider) => slider
 				.setLimits(0, 100, 5)
@@ -172,10 +173,10 @@ export class DiceRollSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 
-		new Setting(containerEl)
-			.setName("Dice Material")
+		new Setting(dice)
+			.setName("Dice material")
 			.setDesc("The surface your dice are made of")
-			.addDropdown((dropdown) => { 
+			.addDropdown((dropdown) => {
 				const materials = Object.keys(MATERIALTYPES);
 				materials.forEach(mat => dropdown.addOption(mat, MATERIALTYPES[mat]?.name ?? mat));
 
@@ -186,13 +187,14 @@ export class DiceRollSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				});
 			});
-		
-		new Setting(containerEl).setName("Dice Preview").setHeading();
 
-		const previewSetting = new Setting(containerEl)
+		const preview = createSettingGroup(containerEl, 'Preview');
+
+		const previewSetting = new Setting(preview)
 			.setName("Test roll")
 			.setDesc("Roll a die with your current settings.");
-		const ua = containerEl.createDiv({cls: "preview-roller", attr: {id: "dice-preview-container"}});
+		// Inside the group's box, which frames it; the dice draw into this element.
+		const ua = preview.createDiv({cls: "preview-roller", attr: {id: "dice-preview-container"}});
 		previewSetting.addButton((button) => button
 			.setButtonText("Refresh")
 			.onClick(() => this.rollRefresh(ua)));

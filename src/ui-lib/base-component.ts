@@ -1,4 +1,4 @@
-import { MarkdownPostProcessorContext, MarkdownRenderChild, debounce } from "obsidian";
+import { HoverParent, HoverPopover, MarkdownPostProcessorContext, MarkdownRenderChild, debounce } from "obsidian";
 import { getApp } from "../app-provider";
 import { isCharacterFile } from "../utilities";
 import { errorMessage, renderBlockError } from "./block-error";
@@ -26,13 +26,18 @@ export type Policy = "unique" | "uniqueModifierNames";
 
 export interface ComponentMetadata {
 	type: string;
+	/** What the component is called on its card, e.g. "Weapon" or "Ability scores". */
+	label?: string;
 	policies: readonly Policy[] | null;
 	actions?: ActionMap;
 	targetKey?: string;
 	modifiers?: ModifierPublisher;
 }
 
-export abstract class BaseComponent<T extends BaseAttributes> extends MarkdownRenderChild {
+export abstract class BaseComponent<T extends BaseAttributes> extends MarkdownRenderChild implements HoverParent {
+
+	/** Lets links in the component show Obsidian's page preview popover. */
+	hoverPopover: HoverPopover | null = null;
 
 	static readonly metadata: ComponentMetadata;
 
@@ -45,6 +50,14 @@ export abstract class BaseComponent<T extends BaseAttributes> extends MarkdownRe
 	}
 
 	abstract render(): void;
+
+	/** This component's display name, shown on its card so its kind is clear. */
+	protected get typeLabel(): string {
+		const metadata = (this.constructor as ComponentConstructor).metadata;
+		if (metadata?.label) return metadata.label;
+		const type = metadata?.type ?? this.attributes.type ?? '';
+		return type.charAt(0).toUpperCase() + type.slice(1);
+	}
 
 	/**
 	 * Call `callback` (debounced) whenever any note belonging to this character

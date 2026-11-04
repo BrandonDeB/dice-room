@@ -1,6 +1,7 @@
 import { Setting } from 'obsidian';
 import { Modifier, nameList, normalizeName, parseModifierValue } from '../modifiers';
 import { YamlStep } from './capabilities';
+import { createCallout } from './native';
 
 /** How a modifier is written in YAML, in a modifier block or a `publishes` list. */
 export interface ModifierFields {
@@ -45,7 +46,7 @@ export function renderModifierSwitch(
 	persist: (steps: YamlStep[]) => Promise<void>,
 ) {
 	if (typeof fields?.name !== 'string' || fields.name.trim() === '') {
-		parent.createDiv({ cls: 'dicelist-error', text: 'A published modifier needs a name.' });
+		createCallout(parent, 'error', 'A published modifier needs a name.');
 		return;
 	}
 	const name = fields.name.trim();
@@ -63,10 +64,7 @@ export function renderModifierSwitch(
 
 	const value = parseModifierValue(fields.value);
 	if (!value.valid) {
-		parent.createDiv({
-			cls: 'dicelist-error',
-			text: `"${value.raw}" is not a valid value for ${name}. ${value.reason}`,
-		});
+		createCallout(parent, 'error', `"${value.raw}" is not a valid value for ${name}`, value.reason);
 	}
 }
 

@@ -5,6 +5,7 @@ import { describeLookupProblem, findUniqueBlock } from 'src/character';
 import { Rollable } from './capabilities';
 import { Roll } from '../roll';
 import { DiceNotation } from './ui-types';
+import { createCallout, createCard, createRollButtonGrid, formatBonus } from './native';
 
 export interface SkillAttributes extends BaseAttributes {
 	proficiency: Skill[] | null;
@@ -15,6 +16,7 @@ export class SkillsComponent extends BaseComponent<SkillAttributes> implements R
 
 	static readonly metadata: ComponentMetadata = {
 		type: "skills",
+		label: "Skills",
 		policies: []
 	}
 
@@ -55,34 +57,35 @@ export class SkillsComponent extends BaseComponent<SkillAttributes> implements R
 
 	private async renderWithStats() {
 		const warning = await this.getAssociatedStats();
-		if (warning) this.containerEl.createDiv({ cls: 'dicelist-error', text: warning });
+		if (warning) createCallout(this.containerEl, 'warning', warning);
 
-		const container = this.containerEl.createDiv({cls: 'skill-full-container'});
-		SKILLS.map((skill: Skill, i: number) => {
-
-			const capsule = container.createDiv({cls: 'skill-container'});
-			capsule.createEl('h4', {text: skill});
+		const buttons = SKILLS.map((skill: Skill) => {
 			const relevantStat = SKILLABILITY[skill];
-
-			this.skillModifiers.set(skill, this.statModifiers.get(relevantStat) ?? 0)
+			const statBonus = this.statModifiers.get(relevantStat) ?? 0;
+			this.skillModifiers.set(skill, statBonus);
 
 			if (this.attributes.expertise?.some(
 				expertise => expertise.toLowerCase() == skill.toLowerCase()
 			)) {
-				this.skillModifiers.set(skill, (this.statModifiers.get(relevantStat) ?? 0) + 4)
+				this.skillModifiers.set(skill, statBonus + 4);
 			}
 
 			if (this.attributes.proficiency?.some(
 				proficiency => proficiency.toLowerCase() == skill.toLowerCase()
 			)) {
-				this.skillModifiers.set(skill, (this.statModifiers.get(relevantStat) ?? 0) + 2)
+				this.skillModifiers.set(skill, statBonus + 2);
 			}
-			capsule.createEl('p', {text: `(+${this.skillModifiers.get(skill) ?? 0})`})
-			capsule.addEventListener('click', () => {
-				this.onRoll({ notation: new DiceNotation(this.getSkillRoll(skill)) })
-			})
 
-		})
+			const bonus = formatBonus(this.skillModifiers.get(skill) ?? 0);
+			return {
+				label: skill,
+				value: bonus,
+				description: `Roll ${skill} (${relevantStat}), ${bonus}`,
+				onClick: () => this.onRoll({ notation: new DiceNotation(this.getSkillRoll(skill)) }),
+			};
+		});
 
+		createRollButtonGrid(createCard(this.containerEl, undefined, this.typeLabel), buttons, 'dicelist-skills');
 	}
+
 }

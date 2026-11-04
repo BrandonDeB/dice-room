@@ -10,6 +10,7 @@ export class WeaponComponent extends AttackComponent {
 
 	static readonly metadata: ComponentMetadata = {
 		type: "weapon",
+		label: "Weapon",
 		policies: ["uniqueModifierNames"],
 		modifiers: modifiersFromPublishes,
 	}

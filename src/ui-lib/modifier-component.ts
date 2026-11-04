@@ -3,6 +3,7 @@ import { Persistable, YamlStep } from './capabilities';
 import { ActionMap } from './actions';
 import { Modifier } from '../modifiers';
 import { modifierFromFields, renderModifierSwitch } from './published-modifiers';
+import { createCard } from './native';
 
 export interface ModifierAttributes extends BaseAttributes {
 	name: string;
@@ -31,6 +32,7 @@ export class ModifierComponent extends BaseComponent<ModifierAttributes> impleme
 
 	static readonly metadata: ComponentMetadata = {
 		type: "modifier",
+		label: "Modifier",
 		policies: ["uniqueModifierNames"],
 		targetKey: "name",
 		actions: modifierActions,
@@ -43,8 +45,7 @@ export class ModifierComponent extends BaseComponent<ModifierAttributes> impleme
 	}
 
 	render() {
-		const box = this.containerEl.createDiv({ cls: 'component-container modifier-container' });
-		renderModifierSwitch(box, this.attributes, [], steps => this.onPersist(steps));
+		renderModifierSwitch(createCard(this.containerEl, undefined, this.typeLabel), this.attributes, [], steps => this.onPersist(steps));
 	}
 
 

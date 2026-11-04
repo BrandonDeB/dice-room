@@ -3,6 +3,7 @@ import { BaseAttributes, BaseComponent, ComponentMetadata } from './base-compone
 import { Rollable } from './capabilities';
 import { Roll } from '../roll';
 import { DiceNotation } from './ui-types';
+import { createCard, createRollButtonGrid, formatBonus } from './native';
 
 export interface StatAttributes extends BaseAttributes {
 	stats: number[];
@@ -13,6 +14,7 @@ export class StatsComponent extends BaseComponent<StatAttributes> implements Rol
 
 	static readonly metadata: ComponentMetadata = {
 		type: "stats",
+		label: "Ability scores",
 		policies: ['unique']
 	}
 
@@ -30,15 +32,16 @@ export class StatsComponent extends BaseComponent<StatAttributes> implements Rol
 	}
 
 	render() {
-		const container = this.containerEl.createDiv({cls: 'ability-full-container'})
-		ABILITIES.map((ability: string, i: number) => {
-			const capsule = container.createDiv({cls: 'ability-container'});
-			capsule.createEl('h4', {text: ability.substring(0, 3)});
-			const statVal = this.attributes.stats[i]
-			capsule.createEl('p', {text: `${statVal.toString()} (+${getAbilityModifier(statVal).toString()})`})
-			capsule.addEventListener('click', () => {
-				this.onRoll({ notation: new DiceNotation(this.getStatRoll(i)) });
-			})
-		})
+		const card = createCard(this.containerEl, undefined, this.typeLabel);
+		createRollButtonGrid(card, ABILITIES.map((ability: string, i: number) => {
+			const score = this.attributes.stats[i];
+			const bonus = formatBonus(getAbilityModifier(score));
+			return {
+				label: ability.substring(0, 3).toUpperCase(),
+				value: `${score} (${bonus})`,
+				description: `Roll ${ability} saving throw: score ${score}, ${bonus}`,
+				onClick: () => this.onRoll({ notation: new DiceNotation(this.getStatRoll(i)) }),
+			};
+		}), 'dicelist-abilities');
 	}
 }
