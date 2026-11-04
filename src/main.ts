@@ -52,7 +52,7 @@ export default class DiceRoomPlugin extends Plugin {
 				}
 				return view.canRoll();
 			},
-			roll: (notation) => getDiceView()?.rollDice(notation),
+			roll: (notation) => getDiceView()?.rollDice(notation) ?? null,
 		};
 
 		this.registerMarkdownCodeBlockProcessor('dicelist', (source, el, ctx) => {

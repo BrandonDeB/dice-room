@@ -1,4 +1,4 @@
-import { ABILITIES, Ability, getAbilityModifier } from 'src/abilites';
+import { ABILITIES, Ability, abilityNamed, getAbilityModifier } from 'src/abilites';
 import { BaseAttributes, BaseComponent, ComponentMetadata } from './base-component';
 import { Rollable } from './capabilities';
 import { Roll } from '../roll';
@@ -18,14 +18,6 @@ const DEFAULT_PROFICIENCY_BONUS = 2;
 /** "1d20+3", "1d20-1", or "1d20" for a d20 roll with a bonus. */
 function d20(bonus: number): string {
 	return bonus === 0 ? '1d20' : `1d20${bonus > 0 ? '+' : ''}${bonus}`;
-}
-
-/** The ability a proficiency entry names ("Dexterity", "dex"), or null if none. */
-function abilityNamed(entry: unknown): Ability | null {
-	const text = String(entry ?? '').trim().toLowerCase();
-	if (text === '') return null;
-	return ABILITIES.find(ability =>
-		ability.toLowerCase() === text || ability.substring(0, 3).toLowerCase() === text) ?? null;
 }
 
 export class StatsComponent extends BaseComponent<StatAttributes> implements Rollable {

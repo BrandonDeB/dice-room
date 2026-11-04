@@ -1,5 +1,6 @@
 import { ComponentFactory } from "./base-component";
 import { ConsumableComponent } from "./consumable-component";
+import { HealthComponent } from "./health-component";
 import { RestComponent } from "./rest-component";
 import { InventoryComponent } from "./inventory";
 import { ModifierComponent } from "./modifier-component";
@@ -17,4 +18,5 @@ export function registerComponents() {
 	ComponentFactory.register(ModifierComponent);
 	ComponentFactory.register(ConsumableComponent);
 	ComponentFactory.register(RestComponent);
+	ComponentFactory.register(HealthComponent);
 }

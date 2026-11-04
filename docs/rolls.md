@@ -51,6 +51,23 @@ Each effect has:
 
 The target must be found exactly once among the character's notes.
 
+### Using the roll's total
+
+An effect argument written as `$total` is replaced with what the roll came to. Those
+effects run after the dice are thrown, instead of before. For example, healing by the roll:
+
+```yaml
+damageRoll:
+  dice: 2d4+2
+  effects:
+    - target: health
+      action: heal
+      args:
+        amount: $total
+```
+
+Before you roll, the effect shows as "Heal by the roll's total".
+
 ### Firing events
 
 An effect can fire a character event instead, such as a short or long rest, by using

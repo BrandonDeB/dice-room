@@ -69,3 +69,11 @@ export const SKILLABILITY: Record<Skill, Ability> = {
 export function getAbilityModifier(stat: number): number {
 	return Math.floor((stat - 10) / 2)
 }
+
+/** The ability a name refers to ("Dexterity", "dex", "DEX"), or null if none. */
+export function abilityNamed(entry: unknown): Ability | null {
+	const text = String(entry ?? '').trim().toLowerCase();
+	if (text === '') return null;
+	return ABILITIES.find(ability =>
+		ability.toLowerCase() === text || ability.substring(0, 3).toLowerCase() === text) ?? null;
+}

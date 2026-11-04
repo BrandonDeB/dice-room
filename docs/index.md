@@ -26,6 +26,7 @@ interactive character sheets inside your notes.
 - [Modifier](components/modifier.md): a named bonus with an on/off switch that rolls can include.
 - [Consumables](components/consumable.md): spell slots and other limited uses that refill.
 - [Rest](components/rest.md): short and long rest buttons that refill what's subscribed.
+- [Hit points](components/health.md): hit points, temporary hit points, hit dice and death saves.
 
 ## For developers
 

@@ -67,7 +67,23 @@ function isEffect(value: unknown): value is Effect {
 /** Where dice actually get thrown. Implemented by the plugin using the Dice view. */
 export interface DiceRoller {
 	ready(): boolean;
-	roll(notation: string): void;
+	/** Throw the dice. Returns the total, or null if it isn't known. */
+	roll(notation: string): number | null;
+}
+
+/** Write `$total` as an effect argument to use the roll's total, e.g. heal by what was rolled. */
+const TOTAL = '$total';
+
+/** Effects that use the roll's total run after the dice instead of before. */
+function usesTotal(effect: Effect): boolean {
+	return Object.values(effect.args ?? {}).some(value => value === TOTAL);
+}
+
+/** The effect with `$total` replaced by a number. */
+function withTotal(effect: Effect, total: number): Effect {
+	const args = Object.fromEntries(Object.entries(effect.args ?? {})
+		.map(([key, value]) => [key, value === TOTAL ? total : value]));
+	return { ...effect, args };
 }
 
 /** What one of a roll's effects would do, or why it can't. */
@@ -110,6 +126,12 @@ async function previewEffect(ctx: MarkdownPostProcessorContext, effect: Effect):
 		const failing = changes.flatMap(change => change.problems);
 		const couldNot = failing.length > 0 ? ` (could not: ${failing.join('; ')})` : '';
 		return { effect, message: `Triggers ${name}: ${details || 'nothing to change'}${couldNot}`, target: changes[0]?.target };
+	}
+	if (usesTotal(effect)) {
+		// The total isn't known yet: check the target with a stand-in, and say what will happen.
+		const preview = await previewAction(ctx, effect.target, effect.action, withTotal(effect, 1).args ?? {});
+		const action = effect.action.charAt(0).toUpperCase() + effect.action.slice(1);
+		return { effect, message: `${action} by the roll's total`, target: preview.target };
 	}
 	const preview = await previewAction(ctx, effect.target, effect.action, effect.args ?? {});
 	return { effect, message: preview.message, target: preview.target };
@@ -172,8 +194,9 @@ export async function performRoll(
 		return;
 	}
 
+	const effects = roll.effects ?? [];
 	const announcements: string[] = [];
-	for (const effect of roll.effects ?? []) {
+	for (const effect of effects.filter(effect => !usesTotal(effect))) {
 		try {
 			const message = await runEffect(ctx, effect);
 			if (message) announcements.push(message);
@@ -183,6 +206,20 @@ export async function performRoll(
 		}
 	}
 
-	roller.roll(modifiers.notation);
+	const total = roller.roll(modifiers.notation);
+
+	// Effects using the total (healing by what was rolled) run once it is known.
+	for (const effect of effects.filter(usesTotal)) {
+		if (total === null) {
+			announcements.push(`Could not read the roll's total, so ${effect.action} was skipped.`);
+			continue;
+		}
+		try {
+			const message = await runEffect(ctx, withTotal(effect, total));
+			if (message) announcements.push(message);
+		} catch (err) {
+			announcements.push(effectError(effect, err));
+		}
+	}
 	if (announcements.length > 0) new Notice(announcements.join('\n'));
 }
