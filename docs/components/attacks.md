@@ -47,6 +47,10 @@ damageRoll: 2d10
 | `range` | No | Shown as "Range: ...". |
 | `picture` | No | An image in your vault, as a wiki link or a path. |
 | `publishes` | No | Modifiers this attack or spell provides, each with an on/off switch on the card. See below. |
+| `ability` | No | Works the rolls out from the character. See [rolls from the character](#rolls-from-the-character). |
+| `proficient` | No | Whether proficiency is added to the hit roll. Defaults to yes. |
+| `bonus` | No | A magic bonus, such as `1` for a +1 weapon. |
+| `damage` | No | Damage dice, such as `1d8`, used with `ability`. |
 
 Spells can also show these, each as its own row when present:
 
@@ -56,6 +60,56 @@ Spells can also show these, each as its own row when present:
 | `school` | School of magic, such as Evocation. |
 | `castingTime` | For example `Action`, `Bonus action`, or `1 minute`. `ACTION` and `BONUS_ACTION` also work. |
 | `components` | A list such as `[V, S, M]`. |
+| `save` | The ability the target saves with, such as `dex`. Shows a Save DC instead of a Hit roll. |
+
+## Rolls from the character
+
+Instead of typing a to-hit bonus that goes stale when your stats or level change, give
+the attack an `ability`. The plugin works the rolls out from the character's
+[stats](stats.md) and [level](character.md), and updates them when those change.
+
+| | Weapon | Spell |
+| --- | --- | --- |
+| `ability` | `str`, `dex`, or `finesse` for the better of the two | Your spellcasting ability, such as `wis` |
+| Hit | d20 + ability modifier + proficiency + `bonus` | d20 + ability modifier + proficiency + `bonus` |
+| Damage | `damage` dice + ability modifier + `bonus` | `damage` dice only |
+| Save DC | | 8 + proficiency + ability modifier + `bonus`, when `save` is set |
+
+````markdown
+```dicelist
+type: weapon
+name: Rapier
+ability: finesse
+bonus: 1
+damage: 1d8
+```
+````
+
+````markdown
+```dicelist
+type: spell
+name: Sacred Flame
+level: 0
+ability: wis
+save: dex
+damage: 1d8
+```
+````
+
+Written `hitRoll` or `damageRoll` dice override the worked-out ones. To add effects or
+modifiers to a worked-out roll, write the roll without `dice`:
+
+```yaml
+ability: dex
+damage: 1d8
+hitRoll:
+  modifiers: [Archery]
+  effects:
+    - target: inventory
+      action: remove
+      args:
+        item: Arrows
+```
 
 ## Effects
 

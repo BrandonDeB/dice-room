@@ -1,6 +1,10 @@
 import { ComponentMetadata } from './base-component'
 import { modifiersFromPublishes } from './published-modifiers'
+import { Setting } from 'obsidian'
 import { AttackComponent, AttackAttributes } from './attack-component'
+import { Sheet } from '../sheet'
+import { Roll } from '../roll'
+import { abilityNamed } from '../abilites'
 
 const CastingTime = {
 	Action: "ACTION",
@@ -21,6 +25,8 @@ export interface SpellAttributes extends AttackAttributes {
 	school: string | undefined;
 	castingTime: CastingTimeType;
 	components: string[];
+	/** The ability targets save against, e.g. dex. Shows a save DC instead of a hit roll. */
+	save?: string;
 }
 
 export class SpellComponent extends AttackComponent {	
@@ -36,9 +42,39 @@ export class SpellComponent extends AttackComponent {
 		super.renderBase();
 	}
 
+	private saveRow?: Setting;
+
+	private get spell(): Partial<SpellAttributes> {
+		return this.attributes as Partial<SpellAttributes>;
+	}
+
+	/** A spell that makes the target save has no hit roll, unless one is written. */
+	protected hitRollFor(sheet: Sheet): Roll | null {
+		if (this.spell.save && this.attributes.hitRoll === undefined) return null;
+		return super.hitRollFor(sheet);
+	}
+
+	/** Spell damage is just the dice: spells don't add the casting ability's modifier. */
+	protected damageDice(): string | null {
+		return this.attributes.ability && this.attributes.damage ? this.attributes.damage : null;
+	}
+
+	/** Save DC: 8 + proficiency + casting ability modifier + any magic bonus. */
+	protected refreshDetails(sheet: Sheet) {
+		const save = abilityNamed(this.spell.save);
+		const casting = abilityNamed(this.attributes.ability);
+		if (!this.saveRow || !save) return;
+		this.saveRow.controlEl.empty();
+		const text = casting
+			? `${8 + sheet.proficiencyBonus + sheet.abilityModifier(casting) + (this.attributes.bonus ?? 0)} ${save}`
+			: 'Needs a casting ability';
+		this.saveRow.controlEl.createSpan({ cls: 'dicelist-detail-value', text });
+	}
+
 	/** Level, school, casting time and components, each only when the YAML has it. */
 	protected renderDetails(card: HTMLElement) {
-		const spell = this.attributes as Partial<SpellAttributes>;
+		const spell = this.spell;
+		if (spell.save) this.saveRow = new Setting(card).setName('Save DC');
 
 		if (typeof spell.level === 'number') {
 			this.addDetailRow(card, 'Level', spell.level === 0 ? 'Cantrip' : String(spell.level));
