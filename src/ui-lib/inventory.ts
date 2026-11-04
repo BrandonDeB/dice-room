@@ -7,6 +7,8 @@ import { ActionError, ActionMap, optionalPositiveInt, requireString } from './ac
 type InventoryItem = {
 	name: string;
 	quantity: number;
+	/** Optional, shown under the item's name. */
+	description?: string;
 };
 
 export interface InventoryAttributes extends BaseAttributes {
@@ -20,7 +22,11 @@ function findItem(items: InventoryItem[], name: string): number {
 }
 
 const inventoryActions: ActionMap<InventoryAttributes> = {
-	/** args: item (name), quantity (default 1). Creates the item if missing. */
+	/**
+	 * args: item (name), quantity (default 1), description (optional).
+	 * Creates the item if missing, with the description if one is given. An existing
+	 * item's description is left alone.
+	 */
 	add: (attrs, args) => {
 		const name = requireString(args, 'item');
 		const quantity = optionalPositiveInt(args, 'quantity', 1);
@@ -28,9 +34,12 @@ const inventoryActions: ActionMap<InventoryAttributes> = {
 		const index = findItem(items, name);
 
 		if (index === -1) {
+			const description = typeof args.description === 'string' && args.description.trim() !== ''
+				? args.description.trim() : undefined;
+			const item: InventoryItem = description ? { name, quantity, description } : { name, quantity };
 			return Array.isArray(attrs.items)
-				? [{ op: 'add', path: ['items'], value: { name, quantity } }]
-				: [{ op: 'set', path: ['items'], value: [{ name, quantity }] }];
+				? [{ op: 'add', path: ['items'], value: item }]
+				: [{ op: 'set', path: ['items'], value: [item] }];
 		}
 		return [{ op: 'set', path: ['items', index, 'quantity'], value: items[index].quantity + quantity }];
 	},
@@ -107,8 +116,11 @@ export class InventoryComponent extends BaseComponent<InventoryAttributes> imple
 		}
 
 		this.attributes.items.forEach((item, index) => {
-			new Setting(card)
-				.setName(item.name)
+			const row = new Setting(card).setName(item.name);
+			if (typeof item.description === 'string' && item.description.trim() !== '') {
+				row.setDesc(item.description);
+			}
+			row
 				.addText(text => {
 					text.inputEl.type = 'number';
 					text.inputEl.min = '0';

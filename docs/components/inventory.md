@@ -13,6 +13,7 @@ type: inventory
 items:
   - name: Arrows
     quantity: 20
+    description: Standard ammunition for bows
   - name: Healing Potion
     quantity: 2
 ```
@@ -23,7 +24,7 @@ items:
 | Field | Required | Description |
 | --- | --- | --- |
 | `type` | Yes | Must be `inventory`. |
-| `items` | No | List of items. Each has a `name` and a `quantity`. |
+| `items` | No | List of items. Each has a `name`, a `quantity`, and an optional `description` shown under its name. |
 
 Item names should be unique. If two items share a name, you will see a warning.
 
@@ -39,12 +40,14 @@ Item names are matched without regard to case.
 
 ### add
 
-Adds to an item's quantity. If the item does not exist, it is created.
+Adds to an item's quantity. If the item does not exist, it is created, with the
+description if one is given. An existing item's description is not changed.
 
 | Argument | Required | Description |
 | --- | --- | --- |
 | `item` | Yes | Item name. |
 | `quantity` | No | How many to add. Whole number, 1 or more. Defaults to 1. |
+| `description` | No | Description for the item, if it is created. |
 
 ### remove
 
