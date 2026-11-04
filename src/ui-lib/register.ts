@@ -2,6 +2,7 @@ import { ComponentFactory } from "./base-component";
 import { CharacterComponent } from "./character-component";
 import { ConditionsComponent } from "./conditions-component";
 import { ConsumableComponent } from "./consumable-component";
+import { FeatureComponent } from "./feature-component";
 import { HealthComponent } from "./health-component";
 import { RestComponent } from "./rest-component";
 import { InventoryComponent } from "./inventory";
@@ -25,4 +26,5 @@ export function registerComponents() {
 	ComponentFactory.register(CharacterComponent);
 	ComponentFactory.register(ConditionsComponent);
 	ComponentFactory.register(ProficienciesComponent);
+	ComponentFactory.register(FeatureComponent);
 }

@@ -28,6 +28,7 @@ In reading view or live preview, the block becomes an interactive panel. Click i
 | [`character`](components/character.md) | Level, proficiency bonus, armor class and more | Yes |
 | [`conditions`](components/conditions.md) | Conditions and exhaustion | Yes |
 | [`proficiencies`](components/proficiencies.md) | Languages, armor, weapons and tools | No |
+| [`feature`](components/feature.md) | A class feature, trait or feat | No |
 
 ## Linking notes to a character
 

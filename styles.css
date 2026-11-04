@@ -269,3 +269,12 @@ If your plugin does not need CSS, delete this file.
 	color: var(--text-muted);
 	font-variant-numeric: tabular-nums;
 }
+
+/* A feature's rendered description: no extra space above its first paragraph. */
+.dicelist-feature-text > :first-child {
+	margin-top: 0;
+}
+
+.dicelist-feature-text > :last-child {
+	margin-bottom: 0;
+}
