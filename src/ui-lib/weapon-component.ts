@@ -1,5 +1,5 @@
 import { ComponentMetadata } from './base-component'
-import { modifiersFromPublishes } from './published-modifiers'
+import { describePublishesEvent, modifiersFromPublishes, publishesOnEvent } from './published-modifiers'
 import { AttackComponent, AttackAttributes } from './attack-component'
 
 export interface WeaponAttributes extends AttackAttributes {
@@ -13,6 +13,8 @@ export class WeaponComponent extends AttackComponent {
 		label: "Weapon",
 		policies: ["uniqueModifierNames"],
 		modifiers: modifiersFromPublishes,
+		onEvent: publishesOnEvent,
+		describeEvent: describePublishesEvent,
 	}
 
 	weaponType: string | undefined;

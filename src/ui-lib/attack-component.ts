@@ -209,7 +209,7 @@ export abstract class AttackComponent extends BaseComponent<AttackAttributes> im
 		this.renderDetails(this.container);
 
 		if (Array.isArray(this.attributes.publishes) && this.attributes.publishes.length > 0) {
-			renderPublishedSwitches(this.container, this.attributes, steps => this.onPersist(steps));
+			renderPublishedSwitches(this.container, this.attributes, steps => this.onPersist(steps), this.concentrateOn);
 		}
 
 		// Categories let modifiers like "+1d4 to attacks" apply without being named.

@@ -2,7 +2,7 @@ import { BaseAttributes, BaseComponent, ComponentMetadata } from './base-compone
 import { Persistable, YamlStep } from './capabilities';
 import { ActionMap, ActionResult } from './actions';
 import { Modifier } from '../modifiers';
-import { modifierFromFields, renderModifierSwitch } from './published-modifiers';
+import { concentrationToEnd, describeConcentrationEnded, modifierFromFields, renderModifierSwitch } from './published-modifiers';
 import { createCard } from './native';
 
 export interface ModifierAttributes extends BaseAttributes {
@@ -47,6 +47,10 @@ export class ModifierComponent extends BaseComponent<ModifierAttributes> impleme
 		targetKey: "name",
 		actions: modifierActions,
 		modifiers: toModifier,
+		// A modifier block is one entry; it ends when another concentration modifier starts.
+		onEvent: (attrs: ModifierAttributes, event: string) =>
+			concentrationToEnd([attrs], event).map(() => ({ op: 'set', path: ['active'], value: false })),
+		describeEvent: ({ before, event }) => describeConcentrationEnded([before], event),
 	}
 
 	onPersist: (steps: YamlStep[]) => Promise<void>;
@@ -55,7 +59,8 @@ export class ModifierComponent extends BaseComponent<ModifierAttributes> impleme
 	}
 
 	render() {
-		renderModifierSwitch(createCard(this.containerEl, undefined, this.typeLabel), this.attributes, [], steps => this.onPersist(steps));
+		renderModifierSwitch(createCard(this.containerEl, undefined, this.typeLabel), this.attributes, [],
+			steps => this.onPersist(steps), this.concentrateOn);
 	}
 
 

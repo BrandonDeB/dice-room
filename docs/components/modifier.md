@@ -30,6 +30,17 @@ description: Concentration, up to 1 minute
 | `active` | No | Whether it is switched on. Defaults to off. The switch saves this for you. |
 | `appliesTo` | No | Roll [categories](../rolls.md#categories) it applies to automatically, such as `attack` or `damage`. `armor class` raises the [character](character.md) block's armor class. Without it, the modifier only applies to rolls that name it. |
 | `description` | No | Shown under the name. |
+| `concentration` | No | `true` for a spell you concentrate on. Switching it on switches off any other concentration modifier. See [concentration](#concentration). |
+
+## Concentration
+
+You can only concentrate on one spell at a time. Mark a modifier with `concentration: true`,
+whether it's a modifier block or published by a [spell](attacks.md#publishing-modifiers),
+and switching it on switches off every other concentration modifier the character has.
+A notice says which ended, such as "Ended concentration on Bless."
+
+This applies to the switches on cards. Switching a modifier on from a roll effect or an
+event subscription doesn't end other concentration.
 
 ## Actions
 

@@ -1,5 +1,5 @@
 import { ComponentMetadata } from './base-component'
-import { modifiersFromPublishes } from './published-modifiers'
+import { describePublishesEvent, modifiersFromPublishes, publishesOnEvent } from './published-modifiers'
 import { Setting } from 'obsidian'
 import { AttackComponent, AttackAttributes } from './attack-component'
 import { Sheet } from '../sheet'
@@ -36,6 +36,8 @@ export class SpellComponent extends AttackComponent {
 		label: "Spell",
 		policies: ["uniqueModifierNames"],
 		modifiers: modifiersFromPublishes,
+		onEvent: publishesOnEvent,
+		describeEvent: describePublishesEvent,
 	}
 
 	render() {

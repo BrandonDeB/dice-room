@@ -140,4 +140,7 @@ publishes:
 ```
 ````
 
+Add `concentration: true` to a published modifier for a concentration spell: switching it
+on ends any other [concentration](modifier.md#concentration).
+
 Published names count toward the same rule as modifier blocks: each name only once per character. A card that publishes a name used elsewhere shows an error instead of its contents.

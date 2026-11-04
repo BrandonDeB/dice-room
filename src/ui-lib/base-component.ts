@@ -1,9 +1,10 @@
-import { HoverParent, HoverPopover, MarkdownPostProcessorContext, MarkdownRenderChild, debounce } from "obsidian";
+import { HoverParent, HoverPopover, MarkdownPostProcessorContext, MarkdownRenderChild, Notice, debounce } from "obsidian";
 import { getApp } from "../app-provider";
 import { isCharacterFile } from "../utilities";
 import { errorMessage, renderBlockError } from "./block-error";
 import { createCallout } from "./native";
-import { checkSubscriptions } from "../events";
+import { checkSubscriptions, fireEvent } from "../events";
+import { concentrationEvent } from "./published-modifiers";
 import { Persistable, Rollable } from "./capabilities";
 import { ActionMap, ActionResult } from "./actions";
 import { YamlStep } from "./capabilities";
@@ -110,6 +111,13 @@ export abstract class BaseComponent<T extends BaseAttributes> extends MarkdownRe
 		const callout = content.parentElement;
 		if (callout) this.containerEl.prepend(callout);
 	}
+
+	/** Fire the concentration event for `name`, ending other concentration modifiers. */
+	protected concentrateOn = (name: string) => {
+		this.guard(fireEvent(this.ctx, concentrationEvent(name)).then(messages => {
+			if (messages.length > 0) new Notice(messages.join(' '));
+		}));
+	};
 
 	/** Run drawing code. If it throws, the block shows the error instead of vanishing. */
 	protected safely(draw: () => void) {
