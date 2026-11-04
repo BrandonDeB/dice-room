@@ -19,6 +19,8 @@ export interface Roll {
 	advantage?: Advantage;
 	/** Chosen when rolling damage after a critical hit: every die is doubled. */
 	critical?: boolean;
+	/** A modifier for this roll only, typed when rolling, such as -4 for exhaustion. */
+	temporary?: string;
 }
 
 /**

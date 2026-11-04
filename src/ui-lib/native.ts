@@ -1,4 +1,5 @@
-import { HoverParent, Keymap, Menu, Setting, SettingGroup, TFile, setIcon } from 'obsidian';
+import { HoverParent, Keymap, Menu, Modal, Setting, SettingGroup, TFile, setIcon } from 'obsidian';
+import { parseModifierValue } from '../modifiers';
 import type { Advantage, PublishedModifier } from '../modifiers';
 import { getApp } from '../app-provider';
 
@@ -209,12 +210,63 @@ export function addRollMenu(el: HTMLElement, choices: RollChoice[]) {
 	});
 }
 
-/** The advantage and disadvantage choices for a d20 roll. */
-export function advantageChoices(roll: (advantage: Advantage) => void): RollChoice[] {
+/** Changes a right-click choice makes to a roll. */
+export interface RollChange {
+	advantage?: Advantage;
+	critical?: boolean;
+	temporary?: string;
+}
+
+/** "Roll with a modifier...": ask for a value for this roll only, such as -4 or 1d4. */
+export function modifierChoice(roll: (change: RollChange) => void): RollChoice {
+	return { title: 'Roll with a modifier...', onClick: () => new OneRollModifierModal(value => roll({ temporary: value })).open() };
+}
+
+/** The right-click choices for a d20 roll: advantage, disadvantage, or a modifier for this roll. */
+export function rollChoices(roll: (change: RollChange) => void): RollChoice[] {
 	return [
-		{ title: 'Roll with advantage', onClick: () => roll('advantage') },
-		{ title: 'Roll with disadvantage', onClick: () => roll('disadvantage') },
+		{ title: 'Roll with advantage', onClick: () => roll({ advantage: 'advantage' }) },
+		{ title: 'Roll with disadvantage', onClick: () => roll({ advantage: 'disadvantage' }) },
+		modifierChoice(roll),
 	];
+}
+
+/** A small native dialog asking for a modifier for one roll. Enter rolls; bad values are explained. */
+class OneRollModifierModal extends Modal {
+	constructor(private readonly onRoll: (value: string) => void) {
+		super(getApp());
+	}
+
+	onOpen() {
+		this.setTitle('Roll with a modifier');
+		let value = '';
+		const error = this.contentEl.createDiv({ cls: 'roll-modifiers roll-problem' });
+		const submit = () => {
+			const parsed = parseModifierValue(value);
+			if (!parsed.valid) {
+				error.setText(parsed.reason);
+				return;
+			}
+			this.close();
+			this.onRoll(value);
+		};
+		new Setting(this.contentEl)
+			.setName('Modifier')
+			.setDesc('Added to this roll only: a number like -4, dice like 1d4, or advantage.')
+			.addText(text => {
+				text.inputEl.setAttr('aria-label', 'Modifier for this roll');
+				text.onChange(next => { value = next; error.setText(''); });
+				text.inputEl.addEventListener('keydown', event => {
+					if (event.key === 'Enter') { event.preventDefault(); submit(); }
+				});
+				window.setTimeout(() => text.inputEl.focus(), 0);
+			})
+			.addButton(button => button.setButtonText('Roll').setCta().onClick(submit));
+	}
+
+	onClose() {
+		this.contentEl.empty();
+	}
 }
 
 /**

@@ -3,8 +3,8 @@ import { d20, loadSheet, proficiencyForLevel } from '../sheet';
 import { BaseAttributes, BaseComponent, ComponentMetadata } from './base-component';
 import { Rollable } from './capabilities';
 import { Roll, generatedRoll } from '../roll';
-import { addRollMenu, advantageChoices, createCallout, createCard, formatBonus, renderModifierList } from './native';
-import { Advantage, modifiersForCategories } from '../modifiers';
+import { RollChange, addRollMenu, createCallout, rollChoices, createCard, formatBonus, renderModifierList } from './native';
+import { modifiersForCategories } from '../modifiers';
 
 export interface StatAttributes extends BaseAttributes {
 	stats: number[];
@@ -67,16 +67,16 @@ export class StatsComponent extends BaseComponent<StatAttributes> implements Rol
 				attr: { role: 'button', tabindex: '0', 'aria-label': `Roll ${ability} check, ${check}` },
 			});
 			const name = ability.toLowerCase();
-			const rollCheck = (advantage?: Advantage) => this.onRoll({
+			const rollCheck = (change: RollChange = {}) => this.onRoll({
 				...generatedRoll(d20(checkBonus), ['check', 'ability check', name], this.attributes.rolls, `${ability} check`),
-				advantage,
+				...change,
 			});
-			const saveRoll = (advantage?: Advantage) => ({
+			const saveRoll = (change: RollChange = {}) => ({
 				...generatedRoll(d20(saveBonus), ['save', 'saving throw', name], this.attributes.rolls, `${ability} save`),
-				advantage,
+				...change,
 			});
 			tile.addEventListener('click', () => rollCheck());
-			addRollMenu(tile, advantageChoices(rollCheck));
+			addRollMenu(tile, rollChoices(rollCheck));
 			tile.addEventListener('keydown', (event: KeyboardEvent) => {
 				if (event.target !== tile) return;
 				if (event.key === 'Enter' || event.key === ' ') {
@@ -111,7 +111,7 @@ export class StatsComponent extends BaseComponent<StatAttributes> implements Rol
 	}
 
 	private addRollButton(parent: HTMLElement, label: string, value: string, description: string,
-		makeRoll: (advantage?: Advantage) => Roll, highlighted = false) {
+		makeRoll: (change?: RollChange) => Roll, highlighted = false) {
 		const button = parent.createEl('button', {
 			cls: ['dicelist-roll-button', ...(highlighted ? ['is-proficient'] : [])],
 			attr: { type: 'button', 'aria-label': description },
@@ -123,7 +123,7 @@ export class StatsComponent extends BaseComponent<StatAttributes> implements Rol
 			event.stopPropagation();
 			this.onRoll(makeRoll());
 		});
-		addRollMenu(button, advantageChoices(advantage => this.onRoll(makeRoll(advantage))));
+		addRollMenu(button, rollChoices(change => this.onRoll(makeRoll(change))));
 		button.addEventListener('keydown', (event) => event.stopPropagation());
 	}
 }

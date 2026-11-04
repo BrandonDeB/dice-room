@@ -294,7 +294,12 @@ export async function resolveRollModifiers(
 
 /** Apply advantage (chosen, or from modifiers) and critical hits to the final notation. */
 function finish(roll: Roll, applied: AppliedModifier[], inactive: PublishedModifier[], problems: string[], notation: string): ResolvedModifiers {
-	const advantage = combineAdvantage([roll.advantage, ...applied.map(modifier => modifier.value.advantage)]);
+	// A modifier typed when rolling is added like any other.
+	const temporary = roll.temporary === undefined ? undefined : parseModifierValue(roll.temporary);
+	if (temporary && !temporary.valid) problems.push(`"${temporary.raw}" can't be added to the roll. ${temporary.reason}`);
+	if (temporary?.valid) notation = combineNotation(notation, [temporary]) ?? notation;
+
+	const advantage = combineAdvantage([roll.advantage, temporary?.valid ? temporary.advantage : undefined, ...applied.map(modifier => modifier.value.advantage)]);
 	let final = applyAdvantage(notation, advantage);
 	if (roll.critical) final = doubleDice(final);
 	return { applied, inactive, problems, notation: final, advantage };

@@ -105,13 +105,12 @@ any of the character's notes change.
 ## Advantage, disadvantage and critical hits
 
 **Right-click** any d20 roll, or use the context menu key, to choose
-**Roll with advantage** or **Roll with disadvantage**. The d20 is rolled twice and the
+**Roll with advantage**, **Roll with disadvantage**, or [a modifier for that roll](#a-modifier-for-one-roll). The d20 is rolled twice and the
 higher or lower one counts. This works on attack hit rolls, ability checks, saving throws,
 skills and initiative.
 
 A [modifier](components/modifier.md) can grant advantage or disadvantage too, by using
-`advantage` or `disadvantage` as its value. The [conditions](components/conditions.md) block
-does this for you. As a modifier of your own, for example:
+`advantage` or `disadvantage` as its value, for an effect that lasts a while, for example:
 
 ```yaml
 type: modifier
@@ -121,6 +120,13 @@ appliesTo: [attack, save]
 ```
 
 Advantage and disadvantage cancel out: with both, the roll is normal.
+
+### A modifier for one roll
+
+For a bonus or penalty that only matters right now, such as exhaustion, a spell cast on
+you this turn, or a DM's ruling, right-click the roll and choose **Roll with a modifier...**.
+Type a number like `-4`, dice like `1d4`, or `advantage`, and press Enter to roll. It's added
+to that roll only, on top of any other modifiers, and nothing is saved to your sheet.
 
 After an attack roll, a natural 20 is announced as a critical hit, and a natural 1 as a
 miss. **Right-click** the Damage roll and choose **Roll critical hit** to double every

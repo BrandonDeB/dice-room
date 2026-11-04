@@ -2,10 +2,10 @@ import { Setting } from 'obsidian';
 import { BaseAttributes, BaseComponent, ComponentMetadata } from './base-component';
 import { Rollable } from './capabilities';
 import { Roll, generatedRoll } from '../roll';
-import { addRollMenu, advantageChoices, createCard, formatBonus } from './native';
+import { RollChange, addRollMenu, createCard, formatBonus, rollChoices } from './native';
 import { d20, loadSheet } from '../sheet';
 import { abilityNamed } from '../abilites';
-import { Advantage, nameList } from '../modifiers';
+import { nameList } from '../modifiers';
 
 export interface ProficienciesAttributes extends BaseAttributes {
 	languages?: unknown;
@@ -61,14 +61,14 @@ export class ProficienciesComponent extends BaseComponent<ProficienciesAttribute
 				continue;
 			}
 			const bonus = sheet.abilityModifier(ability) + sheet.proficiencyBonus;
-			const rollTool = (advantage?: Advantage) => this.onRoll({
+			const rollTool = (change: RollChange = {}) => this.onRoll({
 				...generatedRoll(d20(bonus), ['check', 'tool', tool.name.toLowerCase(), ability.toLowerCase()], this.attributes.rolls, tool.name),
-				advantage,
+				...change,
 			});
 			row.setDesc(`${ability} check, ${formatBonus(bonus)}`)
 				.addButton(button => {
 					button.setButtonText('Roll').setTooltip(`Roll ${tool.name} check`).onClick(() => rollTool());
-					addRollMenu(button.buttonEl, advantageChoices(rollTool));
+					addRollMenu(button.buttonEl, rollChoices(rollTool));
 				});
 		}
 	}

@@ -2,7 +2,7 @@ import { BaseAttributes, BaseComponent } from "./base-component"
 import { Setting } from "obsidian";
 import { Persistable, Rollable, YamlStep } from "./capabilities";
 import { renderPublishedSwitches } from "./published-modifiers";
-import { addRollMenu, advantageChoices, createBlockLink, createCard, formatBonus, headingPicture, renderModifierList } from "./native";
+import { addRollMenu, createBlockLink, modifierChoice, rollChoices, createCard, formatBonus, headingPicture, renderModifierList } from "./native";
 import { Roll, RollField, parseRoll, previewEffects } from "../roll";
 import { normalizeName, readableNotation, resolveRollModifiers } from "../modifiers";
 import { Sheet, d20, loadSheet } from "../sheet";
@@ -90,8 +90,8 @@ export abstract class AttackComponent extends BaseComponent<AttackAttributes> im
 			// Right-click: hit rolls offer advantage; damage offers a critical hit.
 			const rollWith = (change: Partial<Roll>) => { if (line.roll) this.onRoll({ ...line.roll, ...change }); };
 			addRollMenu(button.buttonEl, label === 'Damage'
-				? [{ title: 'Roll critical hit', onClick: () => rollWith({ critical: true }) }]
-				: advantageChoices(advantage => rollWith({ advantage })));
+				? [{ title: 'Roll critical hit', onClick: () => rollWith({ critical: true }) }, modifierChoice(rollWith)]
+				: rollChoices(rollWith));
 		});
 		this.rollLines.push(line);
 	}

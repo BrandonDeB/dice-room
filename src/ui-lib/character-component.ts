@@ -2,8 +2,8 @@ import { Setting } from 'obsidian';
 import { BaseAttributes, BaseComponent, ComponentMetadata } from './base-component';
 import { Rollable } from './capabilities';
 import { Roll, generatedRoll } from '../roll';
-import { addRollMenu, advantageChoices, createCallout, createCard, formatBonus, headingPicture, renderModifierList } from './native';
-import { Advantage, modifiersForCategories } from '../modifiers';
+import { RollChange, addRollMenu, createCallout, rollChoices, createCard, formatBonus, headingPicture, renderModifierList } from './native';
+import { modifiersForCategories } from '../modifiers';
 import { d20, loadSheet, proficiencyForLevel } from '../sheet';
 
 export interface CharacterAttributes extends BaseAttributes {
@@ -79,16 +79,16 @@ export class CharacterComponent extends BaseComponent<CharacterAttributes> imple
 		if (speed !== undefined) detail('Speed', String(speed));
 
 		const initiative = sheet.abilityModifier('Dexterity');
-		const rollInitiative = (advantage?: Advantage) => this.onRoll({
+		const rollInitiative = (change: RollChange = {}) => this.onRoll({
 			...generatedRoll(d20(initiative), ['initiative', 'check', 'dexterity'], this.attributes.rolls, 'Initiative'),
-			advantage,
+			...change,
 		});
 		new Setting(card)
 			.setName('Initiative')
 			.setDesc(formatBonus(initiative))
 			.addButton(button => {
 				button.setButtonText('Roll').setTooltip('Roll initiative').onClick(() => rollInitiative());
-				addRollMenu(button.buttonEl, advantageChoices(rollInitiative));
+				addRollMenu(button.buttonEl, rollChoices(rollInitiative));
 			});
 
 		detail('Passive Perception', String(10 + sheet.skillBonus('Perception')));

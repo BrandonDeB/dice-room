@@ -3,7 +3,7 @@ import { BaseAttributes, BaseComponent, ComponentMetadata } from './base-compone
 import { d20, loadSheet } from '../sheet';
 import { Rollable } from './capabilities';
 import { Roll, generatedRoll } from '../roll';
-import { advantageChoices, createCallout, createCard, createRollButtonGrid, formatBonus, renderModifierList } from './native';
+import { createCallout, rollChoices, createCard, createRollButtonGrid, formatBonus, renderModifierList } from './native';
 import { modifiersForCategories } from '../modifiers';
 
 export interface SkillAttributes extends BaseAttributes {
@@ -56,7 +56,7 @@ export class SkillsComponent extends BaseComponent<SkillAttributes> implements R
 				value: bonus,
 				description: `Roll ${skill} (${SKILLABILITY[skill]}), ${bonus}${level ? `, ${level === 'expertise' ? 'expertise' : 'proficient'}` : ''}`,
 				onClick: () => this.onRoll(skillRoll()),
-				menu: advantageChoices(advantage => this.onRoll({ ...skillRoll(), advantage })),
+				menu: rollChoices(change => this.onRoll({ ...skillRoll(), ...change })),
 			};
 		});
 
