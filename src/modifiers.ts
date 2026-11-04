@@ -131,7 +131,8 @@ export function readableNotation(notation: string): string {
 
 /** Whether a roll throws a d20, so it can have advantage. */
 export function hasD20(notation: string): boolean {
-	return /(^|[^\d])d20(?!\d)/i.test(notation);
+	// Any number of d20s, like 1d20 or 2d20{dis}, but not a d200.
+	return /(^|[^\d])\d*d20(?!\d)/i.test(notation);
 }
 
 function where(modifier: PublishedModifier): string {
