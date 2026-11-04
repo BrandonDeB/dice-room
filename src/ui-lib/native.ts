@@ -217,6 +217,24 @@ export function advantageChoices(roll: (advantage: Advantage) => void): RollChoi
 	];
 }
 
+/**
+ * Show a vault image on the right of a card's heading, for the card's `decorateHeading`
+ * option. `picture` is a path or a wiki link like [[image.png]]. Returns undefined, so
+ * nothing is added, if there's no picture or it isn't found.
+ */
+export function headingPicture(picture: unknown, sourcePath: string, alt: string): ((controlEl: HTMLElement) => void) | undefined {
+	if (typeof picture !== 'string' || picture.trim() === '') return undefined;
+	const app = getApp();
+	const file = app.metadataCache.getFirstLinkpathDest(picture.replace(/\[\[|\]\]/g, ''), sourcePath);
+	if (!file) return undefined;
+	const src = app.vault.getResourcePath(file);
+	return controlEl => {
+		const img = controlEl.createEl('img', { cls: 'dicelist-card-image' });
+		img.src = src;
+		img.alt = alt;
+	};
+}
+
 /** "+2", "-1", "+0": how a bonus reads on a sheet. */
 export function formatBonus(n: number): string {
 	return n < 0 ? `${n}` : `+${n}`;

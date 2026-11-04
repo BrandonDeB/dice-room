@@ -1,9 +1,8 @@
 import { BaseAttributes, BaseComponent } from "./base-component"
-import { getApp } from "./../app-provider"
-import { App, Setting } from "obsidian";
+import { Setting } from "obsidian";
 import { Persistable, Rollable, YamlStep } from "./capabilities";
 import { renderPublishedSwitches } from "./published-modifiers";
-import { addRollMenu, advantageChoices, createBlockLink, createCard, formatBonus, renderModifierList } from "./native";
+import { addRollMenu, advantageChoices, createBlockLink, createCard, formatBonus, headingPicture, renderModifierList } from "./native";
 import { Roll, RollField, parseRoll, previewEffects } from "../roll";
 import { normalizeName, readableNotation, resolveRollModifiers } from "../modifiers";
 import { Sheet, d20, loadSheet } from "../sheet";
@@ -64,7 +63,6 @@ export abstract class AttackComponent extends BaseComponent<AttackAttributes> im
 	description: string | undefined;
 	picture: string | undefined;
 	range: string | undefined;
-	app: App; 
 	container: HTMLDivElement;
 	onRoll: (roll: Roll) => void;
 	setRollCallback(cb: (roll: Roll) => void): void {
@@ -175,13 +173,7 @@ export abstract class AttackComponent extends BaseComponent<AttackAttributes> im
 	}
 
 
-	/** The vault resource path for the `picture` field, or null if there is none or it isn't found. */
-	private picturePath(): string | null {
-		if (!this.attributes.picture) return null;
-		const cleanPath = this.attributes.picture.replace(/\[\[|\]\]/g, "");
-		const file = this.app.metadataCache.getFirstLinkpathDest(cleanPath, this.ctx.sourcePath);
-		return file ? this.app.vault.getResourcePath(file) : null;
-	}
+
 
 		/** A simple labelled row, like "Range: 150/600 ft". */
 	protected addDetailRow(parent: HTMLElement, label: string, value: string) {
@@ -193,16 +185,10 @@ export abstract class AttackComponent extends BaseComponent<AttackAttributes> im
 	protected renderDetails(card: HTMLElement) {}
 
 	renderBase() {
-		this.app = getApp();
 		// The picture sits on the right of the heading, with the title centered beside it.
-		const picture = this.picturePath();
 		this.container = createCard(this.containerEl, this.attributes.name, this.typeLabel, {
 			description: this.attributes.description,
-			decorateHeading: picture ? controlEl => {
-				const img = controlEl.createEl("img", {cls: "dicelist-card-image"});
-				img.src = picture;
-				img.alt = this.attributes.name ?? '';
-			} : undefined,
+			decorateHeading: headingPicture(this.attributes.picture, this.ctx.sourcePath, this.attributes.name ?? ''),
 		});
 
 		if (this.attributes.range) this.addDetailRow(this.container, 'Range', this.attributes.range);

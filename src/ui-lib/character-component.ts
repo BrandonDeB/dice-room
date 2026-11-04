@@ -2,7 +2,7 @@ import { Setting } from 'obsidian';
 import { BaseAttributes, BaseComponent, ComponentMetadata } from './base-component';
 import { Rollable } from './capabilities';
 import { Roll, generatedRoll } from '../roll';
-import { addRollMenu, advantageChoices, createCallout, createCard, formatBonus, renderModifierList } from './native';
+import { addRollMenu, advantageChoices, createCallout, createCard, formatBonus, headingPicture, renderModifierList } from './native';
 import { Advantage, modifiersForCategories } from '../modifiers';
 import { d20, loadSheet, proficiencyForLevel } from '../sheet';
 
@@ -13,6 +13,8 @@ export interface CharacterAttributes extends BaseAttributes {
 	level?: unknown;
 	armorClass?: unknown;
 	speed?: unknown;
+	/** An image in the vault, shown beside the name. */
+	picture?: string;
 	/** Extra settings for the Initiative roll, keyed "Initiative". */
 	rolls?: unknown;
 }
@@ -64,7 +66,10 @@ export class CharacterComponent extends BaseComponent<CharacterAttributes> imple
 		// This block's own level, so the card is right even before the file cache catches up.
 		const level = typeof this.attributes.level === 'number' ? this.attributes.level : null;
 		const subtitle = [this.attributes.class, level !== null ? `Level ${level}` : ''].filter(Boolean).join(', ');
-		const card = createCard(this.containerEl, name, this.typeLabel, { description: subtitle || undefined });
+		const card = createCard(this.containerEl, name, this.typeLabel, {
+			description: subtitle || undefined,
+			decorateHeading: headingPicture(this.attributes.picture, this.ctx.sourcePath, name ?? 'Character'),
+		});
 
 		const detail = (label: string, value: string) =>
 			new Setting(card).setName(label).controlEl.createSpan({ cls: 'dicelist-detail-value', text: value });
