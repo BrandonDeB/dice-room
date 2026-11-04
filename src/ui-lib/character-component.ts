@@ -3,7 +3,8 @@ import { BaseAttributes, BaseComponent, ComponentMetadata } from './base-compone
 import { Rollable } from './capabilities';
 import { Roll } from '../roll';
 import { DiceNotation } from './ui-types';
-import { createCallout, createCard, formatBonus } from './native';
+import { addRollMenu, advantageChoices, createCallout, createCard, formatBonus } from './native';
+import { Advantage } from '../modifiers';
 import { d20, loadSheet, proficiencyForLevel } from '../sheet';
 
 export interface CharacterAttributes extends BaseAttributes {
@@ -57,16 +58,18 @@ export class CharacterComponent extends BaseComponent<CharacterAttributes> imple
 		if (speed !== undefined) detail('Speed', String(speed));
 
 		const initiative = sheet.abilityModifier('Dexterity');
+		const rollInitiative = (advantage?: Advantage) => this.onRoll({
+			notation: new DiceNotation(d20(initiative)),
+			categories: ['initiative', 'check', 'dexterity'],
+			advantage,
+		});
 		new Setting(card)
 			.setName('Initiative')
 			.setDesc(formatBonus(initiative))
-			.addButton(button => button
-				.setButtonText('Roll')
-				.setTooltip('Roll initiative')
-				.onClick(() => this.onRoll({
-					notation: new DiceNotation(d20(initiative)),
-					categories: ['initiative', 'check', 'dexterity'],
-				})));
+			.addButton(button => {
+				button.setButtonText('Roll').setTooltip('Roll initiative').onClick(() => rollInitiative());
+				addRollMenu(button.buttonEl, advantageChoices(rollInitiative));
+			});
 
 		detail('Passive Perception', String(10 + sheet.skillBonus('Perception')));
 	}

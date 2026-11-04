@@ -102,6 +102,29 @@ any of the character's notes change.
 4. A notice announces what the effects did, such as
    "Used 1 of Arrows. 1 left." and "Used 1 of 1st-level spell slots. 2 of 4 left."
 
+## Advantage, disadvantage and critical hits
+
+**Right-click** any d20 roll, or use the context menu key, to choose
+**Roll with advantage** or **Roll with disadvantage**. The d20 is rolled twice and the
+higher or lower one counts. This works on attack hit rolls, ability checks, saving throws,
+skills and initiative.
+
+A [modifier](components/modifier.md) can grant advantage or disadvantage too, by using
+`advantage` or `disadvantage` as its value. For example, being poisoned:
+
+```yaml
+type: modifier
+name: Poisoned
+value: disadvantage
+appliesTo: [attack, check]
+```
+
+Advantage and disadvantage cancel out: with both, the roll is normal.
+
+After an attack roll, a natural 20 is announced as a critical hit, and a natural 1 as a
+miss. **Right-click** the Damage roll and choose **Roll critical hit** to double every
+damage die, including dice added by modifiers.
+
 ## Modifiers
 
 A roll includes a [modifier](components/modifier.md) while the modifier is switched on and

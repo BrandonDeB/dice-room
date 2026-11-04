@@ -3,9 +3,9 @@ import { getApp } from "./../app-provider"
 import { App, Setting } from "obsidian";
 import { Persistable, Rollable, YamlStep } from "./capabilities";
 import { renderPublishedSwitches } from "./published-modifiers";
-import { createBlockLink, createCard, formatBonus } from "./native";
+import { addRollMenu, advantageChoices, createBlockLink, createCard, formatBonus } from "./native";
 import { Roll, RollField, parseRoll, previewEffects } from "../roll";
-import { PublishedModifier, normalizeName, resolveRollModifiers } from "../modifiers";
+import { PublishedModifier, normalizeName, readableNotation, resolveRollModifiers } from "../modifiers";
 import { Sheet, d20, loadSheet } from "../sheet";
 import { Ability, abilityNamed } from "../abilites";
 
@@ -89,6 +89,11 @@ export abstract class AttackComponent extends BaseComponent<AttackAttributes> im
 				.setButtonText('Roll')
 				.setTooltip(`Roll ${label.toLowerCase()}`)
 				.onClick(() => { if (line.roll) this.onRoll(line.roll); });
+			// Right-click: hit rolls offer advantage; damage offers a critical hit.
+			const rollWith = (change: Partial<Roll>) => { if (line.roll) this.onRoll({ ...line.roll, ...change }); };
+			addRollMenu(button.buttonEl, label === 'Damage'
+				? [{ title: 'Roll critical hit', onClick: () => rollWith({ critical: true }) }]
+				: advantageChoices(advantage => rollWith({ advantage })));
 		});
 		this.rollLines.push(line);
 	}
@@ -150,7 +155,8 @@ export abstract class AttackComponent extends BaseComponent<AttackAttributes> im
 
 			const desc = line.setting.descEl;
 			desc.empty();
-			desc.createDiv({ text: resolved.notation });
+			desc.createDiv({ text: readableNotation(resolved.notation) });
+			if (resolved.advantage) desc.createDiv({ cls: 'roll-modifiers', text: `With ${resolved.advantage}` });
 			if (problems.length > 0) {
 				desc.createDiv({ cls: 'roll-modifiers roll-problem', text: problems.join(' ') });
 				continue;

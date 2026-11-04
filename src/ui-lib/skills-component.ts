@@ -4,7 +4,7 @@ import { d20, loadSheet } from '../sheet';
 import { Rollable } from './capabilities';
 import { Roll } from '../roll';
 import { DiceNotation } from './ui-types';
-import { createCallout, createCard, createRollButtonGrid, formatBonus } from './native';
+import { advantageChoices, createCallout, createCard, createRollButtonGrid, formatBonus } from './native';
 
 export interface SkillAttributes extends BaseAttributes {
 	proficiency: Skill[] | null;
@@ -52,6 +52,7 @@ export class SkillsComponent extends BaseComponent<SkillAttributes> implements R
 				value: bonus,
 				description: `Roll ${skill} (${SKILLABILITY[skill]}), ${bonus}${level ? `, ${level === 'expertise' ? 'expertise' : 'proficient'}` : ''}`,
 				onClick: () => this.onRoll({ notation: new DiceNotation(d20(value)) }),
+				menu: advantageChoices(advantage => this.onRoll({ notation: new DiceNotation(d20(value)), advantage })),
 			};
 		});
 

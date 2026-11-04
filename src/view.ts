@@ -3,15 +3,10 @@ import { DiceBox, DiceNotation } from '@3d-dice/dice-box-threejs';
 import DiceRoomPlugin from "./main";
 import { CustomDice } from "./types";
 import JoinRoomScreen from "./screens/join-room"
+import { RollOutcome, rollOutcome } from "./roll";
 
 export const VIEW_TYPE_DICE = 'dice-view';
 
-/** The total of a pre-rolled notation: every die's result plus the flat constant. */
-function rollTotal(notation: { result: unknown[]; constant: number | null; op: string }): number {
-	const dice = notation.result.reduce<number>((sum, value) => sum + (Number(value) || 0), 0);
-	const constant = notation.constant ?? 0;
-	return dice + (notation.op === '-' ? -constant : constant);
-}
 let currentUser = 0;
 
 export class DiceView extends ItemView {
@@ -131,7 +126,7 @@ export class DiceView extends ItemView {
 	}
 
 	/** Roll for the room. Returns the total, known up front because results are pre-rolled. */
-	public rollDice(notation: string): number | null {
+	public rollDice(notation: string): RollOutcome | null {
 		const results = new DiceNotation(notation, true);
 		if (this.ws && this.ws.readyState == WebSocket.OPEN) {
 			this.ws.send(JSON.stringify({
@@ -140,7 +135,7 @@ export class DiceView extends ItemView {
 				"results": results.stringify(true),
 				"room":  this.room,
 			}));
-			return rollTotal(results);
+			return rollOutcome(results);
 		} else {
 			new Notice("Join a room to roll your dice!");
 			return null;

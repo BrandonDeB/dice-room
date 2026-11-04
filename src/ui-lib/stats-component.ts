@@ -4,7 +4,8 @@ import { BaseAttributes, BaseComponent, ComponentMetadata } from './base-compone
 import { Rollable } from './capabilities';
 import { Roll } from '../roll';
 import { DiceNotation } from './ui-types';
-import { createCallout, createCard, formatBonus } from './native';
+import { addRollMenu, advantageChoices, createCallout, createCard, formatBonus } from './native';
+import { Advantage } from '../modifiers';
 
 export interface StatAttributes extends BaseAttributes {
 	stats: number[];
@@ -64,8 +65,9 @@ export class StatsComponent extends BaseComponent<StatAttributes> implements Rol
 				cls: 'dicelist-ability',
 				attr: { role: 'button', tabindex: '0', 'aria-label': `Roll ${ability} check, ${check}` },
 			});
-			const rollCheck = () => this.onRoll({ notation: new DiceNotation(d20(checkBonus)) });
-			tile.addEventListener('click', rollCheck);
+			const rollCheck = (advantage?: Advantage) => this.onRoll({ notation: new DiceNotation(d20(checkBonus)), advantage });
+			tile.addEventListener('click', () => rollCheck());
+			addRollMenu(tile, advantageChoices(rollCheck));
 			tile.addEventListener('keydown', (event: KeyboardEvent) => {
 				if (event.target !== tile) return;
 				if (event.key === 'Enter' || event.key === ' ') {
@@ -97,6 +99,7 @@ export class StatsComponent extends BaseComponent<StatAttributes> implements Rol
 			event.stopPropagation();
 			this.onRoll({ notation: new DiceNotation(notation()) });
 		});
+		addRollMenu(button, advantageChoices(advantage => this.onRoll({ notation: new DiceNotation(notation()), advantage })));
 		button.addEventListener('keydown', (event) => event.stopPropagation());
 	}
 }

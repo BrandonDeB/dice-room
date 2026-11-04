@@ -3,7 +3,7 @@ import { BlockTarget, invokeAction, previewAction } from "./character";
 import { fireEvent, previewEvent } from "./events";
 import { ActionError, Effect } from "./ui-lib/actions";
 import { DiceNotation } from "./ui-lib/ui-types";
-import { nameList, resolveRollModifiers } from "./modifiers";
+import { Advantage, nameList, resolveRollModifiers } from "./modifiers";
 
 /**
  * A single clickable roll: the dice to throw, plus effects on other
@@ -15,6 +15,10 @@ export interface Roll {
 	effects?: Effect[];
 	modifiers?: string[];
 	categories?: string[];
+	/** Chosen when rolling: roll the d20 twice and keep the higher or lower. */
+	advantage?: Advantage;
+	/** Chosen when rolling damage after a critical hit: every die is doubled. */
+	critical?: boolean;
 }
 
 /**
@@ -65,10 +69,40 @@ function isEffect(value: unknown): value is Effect {
 }
 
 /** Where dice actually get thrown. Implemented by the plugin using the Dice view. */
+/** What a roll came to: its total, and the d20 that counted if there was one. */
+export interface RollOutcome {
+	total: number;
+	natural?: number;
+}
+
+/**
+ * What a pre-rolled notation came to: its total (advantage and disadvantage keep only
+ * the higher or lower d20) and the d20 that counted, if there was exactly one.
+ */
+export function rollOutcome(notation: {
+	set: { num: number; type: string; func?: string }[];
+	result: unknown[];
+	constant: number | null;
+	op: string;
+}): RollOutcome {
+	let index = 0;
+	let total = 0;
+	let natural: number | undefined;
+	for (const set of notation.set) {
+		const values = notation.result.slice(index, index + set.num).map(value => Number(value) || 0);
+		index += set.num;
+		const kept = set.func === 'adv' ? [Math.max(...values)] : set.func === 'dis' ? [Math.min(...values)] : values;
+		total += kept.reduce((sum, value) => sum + value, 0);
+		if (natural === undefined && set.type === 'd20' && kept.length === 1) natural = kept[0];
+	}
+	const constant = notation.constant ?? 0;
+	return { total: total + (notation.op === '-' ? -constant : constant), natural };
+}
+
 export interface DiceRoller {
 	ready(): boolean;
-	/** Throw the dice. Returns the total, or null if it isn't known. */
-	roll(notation: string): number | null;
+	/** Throw the dice. Returns what they came to, or null if it isn't known. */
+	roll(notation: string): RollOutcome | null;
 }
 
 /** Write `$total` as an effect argument to use the roll's total, e.g. heal by what was rolled. */
@@ -206,7 +240,14 @@ export async function performRoll(
 		}
 	}
 
-	const total = roller.roll(modifiers.notation);
+	const outcome = roller.roll(modifiers.notation);
+	const total = outcome?.total ?? null;
+
+	// A natural 20 on an attack is a critical hit; a natural 1 always misses.
+	if (roll.categories?.includes('attack')) {
+		if (outcome?.natural === 20) announcements.unshift('Critical hit! Right-click the Damage roll and choose "Roll critical hit".');
+		if (outcome?.natural === 1) announcements.unshift('Natural 1: the attack misses.');
+	}
 
 	// Effects using the total (healing by what was rolled) run once it is known.
 	for (const effect of effects.filter(usesTotal)) {

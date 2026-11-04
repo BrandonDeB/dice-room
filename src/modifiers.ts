@@ -4,12 +4,17 @@ import { ComponentFactory } from "./ui-lib/base-component";
 import type { Roll } from "./roll";
 import { DiceNotation } from "./ui-lib/ui-types";
 
+/** Rolling two d20s and keeping the higher (advantage) or lower (disadvantage). */
+export type Advantage = 'advantage' | 'disadvantage';
+
 /** A parsed modifier value: dice to add plus one flat number, such as 1d4+2. */
 export interface ModifierValue {
 	valid: true;
 	dice: string[];
 	flat: number;
 	text: string;
+	/** Set when the value is `advantage` or `disadvantage`, as a condition might grant. */
+	advantage?: Advantage;
 }
 
 /** A value that could not be parsed, kept so messages can show what was written. */
@@ -48,6 +53,8 @@ export interface PublishedModifier extends Modifier {
 export type AppliedModifier = PublishedModifier & { value: ModifierValue };
 
 export interface ResolvedModifiers {
+	/** Advantage or disadvantage the roll ends up with, if any. */
+	advantage?: Advantage;
 	applied: AppliedModifier[];
 	/** Modifiers the roll would use, but that are switched off. */
 	inactive: PublishedModifier[];
@@ -89,7 +96,8 @@ export async function findModifiers(ctx: MarkdownPostProcessorContext): Promise<
 	return found;
 }
 
-const TERM = /^([+-]?)(\d*d\d+|\d+)/i;
+// Dice may carry an advantage marker, like 2d20{adv}.
+const TERM = /^([+-]?)(\d*d\d+(?:\{(?:adv|dis),?\})?|\d+)/i;
 
 interface Term { sign: '+' | '-'; dice?: string; amount?: number; }
 
@@ -135,6 +143,10 @@ export function parseModifierValue(value: unknown): ModifierValue | InvalidModif
 	if (typeof value !== 'string' && typeof value !== 'number') {
 		return invalid('A modifier needs a value: dice like 1d4 or a number like +2.');
 	}
+	const keyword = raw.trim().toLowerCase();
+	if (keyword === 'advantage' || keyword === 'disadvantage') {
+		return { valid: true, dice: [], flat: 0, text: keyword, advantage: keyword };
+	}
 	const text = new DiceNotation(raw).toString();
 	if (/\{\{.*\}\}/.test(text)) return invalid(`Could not fill in "${text}": check the note and property name.`);
 
@@ -175,6 +187,30 @@ export function combineNotation(base: string, values: ModifierValue[]): string |
 	return notation === '' ? String(total) : notation + signed(total);
 }
 
+/** Advantage and disadvantage cancel out: with both, the roll is normal. */
+function combineAdvantage(sources: (Advantage | undefined)[]): Advantage | undefined {
+	const advantage = sources.includes('advantage');
+	const disadvantage = sources.includes('disadvantage');
+	if (advantage === disadvantage) return undefined;
+	return advantage ? 'advantage' : 'disadvantage';
+}
+
+/** Roll the first d20 twice, keeping the higher or lower: 1d20+5 becomes 2d20{adv}+5. */
+export function applyAdvantage(notation: string, advantage: Advantage | undefined): string {
+	if (!advantage) return notation;
+	return notation.replace(/(^|[+-])1?d20(?![\d{])/i, `$12d20{${advantage === 'advantage' ? 'adv' : 'dis'}}`);
+}
+
+/** A critical hit doubles every damage die: 1d8+1d6+3 becomes 2d8+2d6+3. */
+export function doubleDice(notation: string): string {
+	return notation.replace(/(\d*)d(\d+)/gi, (_, count: string, sides: string) => `${(Number(count) || 1) * 2}d${sides}`);
+}
+
+/** Notation for people to read: the dice library's advantage markers are dropped. */
+export function readableNotation(notation: string): string {
+	return notation.replace(/\{(adv|dis),?\}/gi, '');
+}
+
 function where(modifier: PublishedModifier): string {
 	return `${modifier.file.basename}, line ${modifier.lineStart + 1}`;
 }
@@ -193,7 +229,7 @@ export async function resolveRollModifiers(
 	const subscribed = (roll.modifiers ?? []).map(normalizeName);
 	const categories = new Set((roll.categories ?? []).map(normalizeName));
 	if (subscribed.length === 0 && categories.size === 0) {
-		return { applied: [], inactive: [], problems: [], notation: base };
+		return finish(roll, [], [], [], base);
 	}
 
 	const published = await findModifiers(ctx);
@@ -243,5 +279,13 @@ export async function resolveRollModifiers(
 	if (notation === null) {
 		problems.push(`Modifiers can only be added to plain dice and numbers, not "${base}"`);
 	}
-	return { applied, inactive, problems, notation: notation ?? base };
+	return finish(roll, applied, inactive, problems, notation ?? base);
+}
+
+/** Apply advantage (chosen, or from modifiers) and critical hits to the final notation. */
+function finish(roll: Roll, applied: AppliedModifier[], inactive: PublishedModifier[], problems: string[], notation: string): ResolvedModifiers {
+	const advantage = combineAdvantage([roll.advantage, ...applied.map(modifier => modifier.value.advantage)]);
+	let final = applyAdvantage(notation, advantage);
+	if (roll.critical) final = doubleDice(final);
+	return { applied, inactive, problems, notation: final, advantage };
 }

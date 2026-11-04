@@ -1,4 +1,5 @@
-import { HoverParent, Keymap, Setting, SettingGroup, TFile, setIcon } from 'obsidian';
+import { HoverParent, Keymap, Menu, Setting, SettingGroup, TFile, setIcon } from 'obsidian';
+import type { Advantage } from '../modifiers';
 import { getApp } from '../app-provider';
 
 /*
@@ -105,6 +106,8 @@ export interface RollButton {
 	/** Read by screen readers and shown as a tooltip, e.g. "Roll Stealth, +2". */
 	description: string;
 	onClick: () => void;
+	/** Other ways to roll it, offered on right-click. */
+	menu?: RollChoice[];
 }
 
 /**
@@ -121,6 +124,7 @@ export function createRollButtonGrid(parent: HTMLElement, buttons: RollButton[],
 		button.createSpan({ cls: 'dicelist-roll-button-label', text: entry.label });
 		button.createSpan({ cls: 'dicelist-roll-button-value', text: entry.value });
 		button.addEventListener('click', entry.onClick);
+		if (entry.menu) addRollMenu(button, entry.menu);
 	}
 	return grid;
 }
@@ -168,6 +172,31 @@ export function createBlockLink(
 		});
 	});
 	return link;
+}
+
+/** Another way to make a roll, offered on right-click: "Roll with advantage". */
+export interface RollChoice {
+	title: string;
+	onClick: () => void;
+}
+
+/** Right-click, or the context menu key, on a roll offers other ways to make it. */
+export function addRollMenu(el: HTMLElement, choices: RollChoice[]) {
+	el.addEventListener('contextmenu', (event: MouseEvent) => {
+		event.preventDefault();
+		event.stopPropagation();
+		const menu = new Menu();
+		for (const choice of choices) menu.addItem(item => item.setTitle(choice.title).onClick(choice.onClick));
+		menu.showAtMouseEvent(event);
+	});
+}
+
+/** The advantage and disadvantage choices for a d20 roll. */
+export function advantageChoices(roll: (advantage: Advantage) => void): RollChoice[] {
+	return [
+		{ title: 'Roll with advantage', onClick: () => roll('advantage') },
+		{ title: 'Roll with disadvantage', onClick: () => roll('disadvantage') },
+	];
 }
 
 /** "+2", "-1", "+0": how a bonus reads on a sheet. */
