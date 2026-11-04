@@ -111,11 +111,6 @@ export async function findAllBlocks(ctx: MarkdownPostProcessorContext): Promise<
 	return matches;
 }
 
-/** Every block that has a component, such as every block with an `inventory`. */
-export async function findBlocksWith(ctx: MarkdownPostProcessorContext, key: string): Promise<BlockMatch[]> {
-	return (await findAllBlocks(ctx)).filter(match => hasComponent(match.data, key));
-}
-
 /** Whether a block's YAML has this component's key, even if it's empty. */
 export function hasComponent(data: Record<string, unknown>, key: string): boolean {
 	return Object.prototype.hasOwnProperty.call(data ?? {}, key);

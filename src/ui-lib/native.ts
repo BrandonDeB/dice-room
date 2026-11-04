@@ -93,38 +93,6 @@ export function createCallout(
 	return content;
 }
 
-/** One entry in a grid of roll buttons (abilities, skills). */
-export interface RollButton {
-	/** Short text on the button, e.g. "STR" or "Stealth". */
-	label: string;
-	/** The value shown with it, e.g. "+2". */
-	value: string;
-	/** Read by screen readers and shown as a tooltip, e.g. "Roll Stealth, +2". */
-	description: string;
-	onClick: () => void;
-	/** Other ways to roll it, offered on right-click. */
-	menu?: RollChoice[];
-}
-
-/**
- * A grid of native Obsidian buttons. Unlike clickable divs, these follow the theme,
- * show hover and focus states, and can be used with the keyboard.
- */
-export function createRollButtonGrid(parent: HTMLElement, buttons: RollButton[], cls: string): HTMLElement {
-	const grid = parent.createDiv({ cls: `dicelist-card-content dicelist-roll-grid ${cls}` });
-	for (const entry of buttons) {
-		const button = grid.createEl('button', {
-			cls: 'dicelist-roll-button',
-			attr: { type: 'button', 'aria-label': entry.description },
-		});
-		button.createSpan({ cls: 'dicelist-roll-button-label', text: entry.label });
-		button.createSpan({ cls: 'dicelist-roll-button-value', text: entry.value });
-		button.addEventListener('click', entry.onClick);
-		if (entry.menu) addRollMenu(button, entry.menu);
-	}
-	return grid;
-}
-
 /** Hover source id for page previews of dicelist links. Registered in main.ts. */
 export const HOVER_SOURCE = 'dice-room';
 

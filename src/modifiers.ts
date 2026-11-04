@@ -135,14 +135,6 @@ function where(modifier: PublishedModifier): string {
 	return `${modifier.file.basename}, line ${modifier.lineStart + 1}`;
 }
 
-/** Active modifiers that apply to any of these categories, for showing what affects a value or roll. */
-export function modifiersForCategories(character: CharacterData, categories: string[]): AppliedModifier[] {
-	const wanted = new Set(categories.map(normalizeName));
-	return character.modifiers.filter((modifier): modifier is AppliedModifier =>
-		modifier.active && modifier.value.valid && !changesNothing(modifier.value) &&
-		modifier.categories.some(category => wanted.has(normalizeName(category))));
-}
-
 /**
  * Work out a roll's dice and which modifiers apply. A modifier applies when it is
  * active and either the roll subscribes to its name or they share a category.

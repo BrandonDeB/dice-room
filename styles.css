@@ -177,7 +177,6 @@ If your plugin does not need CSS, delete this file.
 	color: var(--text-muted);
 }
 
-/* Grids of native buttons for abilities and skills. */
 /* `layout: grid` on a card: rolls and values as tiles that fill the width. */
 .dicelist-roll-grid {
 	display: grid;
