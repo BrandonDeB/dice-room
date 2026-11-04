@@ -1,342 +1,178 @@
 # Components and actions
 
-This page is for contributors. It explains how `dicelist` components are built
-and how they talk to each other.
+This page is for contributors. It explains how cards are built from components and how
+components talk to each other.
 
-## How a block becomes a component
+## How a block becomes a card
 
 1. `src/main.ts` registers a processor for `dicelist` code blocks.
-2. `src/codeblock.ts` parses the YAML and asks `ComponentFactory` for the class registered
-   under its `type`.
-3. The component is given its capabilities, such as rolling dice or saving edits, and is rendered.
+2. `src/codeblock.ts` parses the YAML, checks the character-wide rules in
+   `src/ui-lib/policies.ts`, and creates a `Card` (`src/ui-lib/card.ts`).
+3. The card draws its heading (`name`, the `type` tag, `picture`), its Markdown
+   `description`, and then each component, in the order the YAML lists their keys.
 
-All component classes are registered in `src/ui-lib/register.ts`.
+There are no block types. `type` is only a label. Everything a card does comes from its
+components.
 
 ## Writing a component
 
-Extend `BaseComponent` with an attributes interface describing the block's YAML,
-and give the class static `metadata`:
+A component is a `CardComponent` (`src/ui-lib/component.ts`) registered under a YAML key in
+`src/ui-lib/components/index.ts`. Its data is the value under that key, so a component
+never sees the rest of the card.
 
 ```ts
-export interface HealthAttributes extends BaseAttributes {
-	current: number;
-	max: number;
-}
-
-export class HealthComponent extends BaseComponent<HealthAttributes> {
-	static readonly metadata: ComponentMetadata = {
-		type: "health",
-		policies: ["unique"],
-	};
-
-	render() {
-		this.containerEl.createEl("p", {
-			text: `${this.attributes.current} / ${this.attributes.max}`,
-		});
-	}
-}
+export const notesComponent: CardComponent<string[]> = {
+	key: 'notes',
+	label: 'Notes',
+	render(view) {
+		for (const note of view.data ?? []) new Setting(view.el).setName(note);
+	},
+};
 ```
-
-Then register it in `src/ui-lib/register.ts`:
 
 ```ts
-ComponentFactory.register(HealthComponent);
+registerComponent(notesComponent);
 ```
 
-### Capabilities
+Everything else is optional:
 
-Components opt into extra abilities by implementing an interface from
-`src/ui-lib/capabilities.ts`. The code block wires them up automatically.
+| Field | What it's for |
+| --- | --- |
+| `render(view)` | Draw rows into `view.el`. See [drawing](#drawing). |
+| `actions` | Actions effects and `on` lists can run. See [actions](#actions-how-components-talk-to-each-other). |
+| `unique` | Only one card per character may have it, so effects find it without a name. |
+| `entryNames` | The names of the entries it holds. Effects pick the card by the `name` argument, and each name may be used once per character. |
+| `modifiers` | Modifiers it publishes. See [modifiers](#modifiers). |
+| `values` | Values it publishes for formulas. See [values](#values-and-formulas). |
+| `onEvent`, `describeEvent` | How it reacts to events. See [events](#events). |
 
-- `Rollable`: receives an `onRoll(roll)` callback. See [rolls](#rolls) below.
-- `Persistable`: receives an `onPersist(steps)` callback that edits the component's own YAML.
+### Drawing
 
-YAML edits are described as steps, each with a path into the YAML:
+`render` gets a `ComponentView`:
+
+1. `el`: the card's row list. Add `Setting` rows, or elements with the `dicelist-card-content` class.
+2. `data`: the component's data, the value under its key.
+3. `persist(steps)`: save YAML edits, with paths inside the component's data. The card
+   puts its key in front, so `[0, 'used']` saves `consumables[0].used`.
+4. `roll(roll)`: make a roll, with its effects and modifiers.
+5. `refresh(update)`: `update` is called with the loaded character, and again whenever any
+   of the character's notes change. Use it for anything worked out from other cards, such
+   as totals. Update text in place, so keyboard focus isn't lost.
+6. `layout`: `grid` when the card asks for tiles.
+7. `owner`: the card, for registering DOM events and for link previews.
+
+YAML edits are described as steps:
 
 ```ts
-{ op: "set", path: ["items", 0, "quantity"], value: 5 }
-{ op: "add", path: ["items"], value: { name: "Rope", quantity: 1 } }
-{ op: "delete", path: ["items", 2] }
+{ op: "set", path: [0, "quantity"], value: 5 }
+{ op: "add", path: [], value: { name: "Rope", quantity: 1 } }
+{ op: "delete", path: [2] }
 ```
 
-### Policies
+## The character
 
-`"unique"` means the component should appear only once per character.
+`loadCharacter(ctx)` in `src/character-data.ts` reads every block in the character's notes
+once and returns a `CharacterData`:
 
-`"uniqueModifierNames"` means every modifier the block publishes must have a name no other
-modifier of the character uses, whichever component type publishes it. The modifier
-component uses it. Policy checks receive the block's YAML so they can see what it publishes.
+1. `modifiers`: every published modifier, with its value worked out.
+2. `value(name)`: a value's total, plus the modifiers that added to it by category.
+3. `evaluate(formula, variables)` and `condition(formula, variables)`: work out a
+   [formula](../formulas.md) using the character's values.
 
-Policies are checked in `src/ui-lib/policies.ts` before a block is displayed. A block that breaks
-one shows an error, with links to the other blocks involved, instead of its contents.
+Values and modifier values are worked out when first asked for and then kept, so they can
+use each other. Going in a circle throws a `FormulaError` naming where.
+
+## Values and formulas
+
+`src/formula.ts` parses and works out formulas in one pass. A formula comes to a
+`DiceAmount`: a list of dice and one whole number, which `toNotation` turns into what the
+dice library throws. Values come from a `FormulaScope`, which `CharacterData.scope` provides.
+Mistakes throw `FormulaError`, whose message is safe to show.
+
+A component publishes values with its `values` function, returning `ValueDefinition`s: a
+name, a formula, and categories that modifiers can add to.
+
+## Modifiers
+
+A component publishes modifiers with its `modifiers` function. Each `Modifier` has a name,
+its raw `value` (a formula, or `advantage` or `disadvantage`), whether it's `active`, and
+its categories. `CharacterData` works the values out.
+
+`resolveRollModifiers(character, roll)` in `src/modifiers.ts` works out a roll's dice, picks
+the modifiers it names plus those sharing one of its categories, and reports problems
+instead of guessing: an unknown name, two modifiers with the same name, or a bad value.
 
 ## Rolls
 
-A roll is defined by the `Roll` type in `src/roll.ts`: a `DiceNotation` plus optional effects.
-`DiceNotation`, in `src/ui-lib/ui-types.ts`, fills in any `{{note.property}}` references.
-
-```ts
-interface Roll {
-	notation: DiceNotation;
-	effects?: Effect[];
-}
-```
-
-A rollable component never throws dice or runs effects itself. It hands a `Roll` to `onRoll`,
-and `performRoll` in `src/roll.ts` does the rest: check the Dice view is ready, run the effects
-in order, then throw the dice. So every roll in every component supports effects for free.
-
-If a roll comes from YAML, declare the field as `RollField` and normalize it with `parseRoll`.
-That accepts both the short form, `hitRoll: 1d20+5`, and the long form with `dice` and `effects`.
-
-```ts
-export interface HealingPotionAttributes extends BaseAttributes {
-	heal: RollField;
-}
-
-// in render():
-const roll = parseRoll(this.attributes.heal);
-if (roll) button.addEventListener("click", () => this.onRoll(roll));
-```
-
-Rolls a component generates itself, like a skill check, can pass just the notation:
-`this.onRoll({ notation: new DiceNotation("1d20+3") })`.
-
-Give `parseRoll` the roll's default [categories](../rolls.md#categories) as its second
-argument, so category modifiers apply: `parseRoll(this.attributes.heal, ["healing"])`.
-The YAML can add more.
+A `Roll` (`src/roll.ts`) is an entry of a `rolls` list: a name, a `dice` formula, effects,
+modifiers and categories. A component never throws dice or runs effects itself. It passes a
+`Roll` to `view.roll`, and `performRoll` checks the Dice view is ready, checks every
+effect, runs the effects that don't need the result, throws the dice, then runs those that
+use `$total` or an `if` with `$total` or `$natural`. A roll without dice runs its effects
+through `performEffects`.
 
 ## Actions: how components talk to each other
 
-A component type can **publish actions** that roll effects call. An action changes
-the target component's YAML, wherever it lives among the character's notes.
-The target does not need to be open.
+A component can publish **actions** that effects and `on` lists call. An action changes the
+target component's data, wherever its card lives among the character's notes. The target
+doesn't need to be open.
 
 ### Publishing an action
 
-Add an `actions` map to the metadata. Each action is a pure function. It receives the target
-block's current data and the caller's arguments, and returns YAML steps.
-Throw `ActionError` to reject the request with a message for the user.
+Each action is a pure function. It gets the component's current data and the caller's
+arguments, and returns YAML steps with paths inside that data. Throw `ActionError` to
+reject the request with a message for the user.
 
 ```ts
-import { ActionError, ActionMap, optionalPositiveInt } from "./actions";
-
-const healthActions: ActionMap<HealthAttributes> = {
-	damage: (attrs, args) => {
-		const amount = optionalPositiveInt(args, "amount", 1);
-		return [{ op: "set", path: ["current"], value: Math.max(0, attrs.current - amount) }];
+const healthActions: ActionMap<HealthFields> = {
+	heal: {
+		run: (fields, args) => {
+			const amount = optionalPositiveInt(args, "amount", 1);
+			if (fields.current >= fields.max) throw new ActionError("Already at full health");
+			return [{ op: "set", path: ["current"], value: Math.min(fields.max, fields.current + amount) }];
+		},
+		describe: ({ after, args, applied }) => applied ? `Healed ${args.amount}.` : `Heals ${args.amount}`,
 	},
-	heal: (attrs, args) => {
-		const amount = optionalPositiveInt(args, "amount", 1);
-		if (attrs.current >= attrs.max) throw new ActionError("Already at full health");
-		return [{ op: "set", path: ["current"], value: Math.min(attrs.max, attrs.current + amount) }];
-	},
-};
-
-static readonly metadata: ComponentMetadata = {
-	type: "health",
-	policies: ["unique"],
-	actions: healthActions,
 };
 ```
 
-Keep handlers free of side effects. They may be called again if the note changes,
-and a thrown error leaves the note untouched. Rolls also run them as a dry run to preview
-what they will do, so they must not change anything themselves.
+Keep handlers free of side effects. They run as a dry run to preview what they'll do, and
+again if the note changed, and a thrown error leaves the note untouched.
 
-### Describing an action
-
-An action can be an object with `run` (the handler) and `describe`. One `describe`
-function serves two places, so the wording lives in one spot:
-
-1. **Preview**, before a roll is made: rolls show it under their total, such as
-   "Uses 1 of Arrows (2 left)". `applied` is false.
-2. **Announcement**, after the action is saved: shown in a notice, such as
-   "Used 1 of Arrows. 1 left." `applied` is true.
-
-It receives the target's data `before` and `after` the action (for a preview, `after` is
-worked out without saving), and the action's `args`.
-
-```ts
-remove: {
-	run: (attrs, args) => { /* return YAML steps, or throw ActionError */ },
-	describe: ({ before, after, args, applied }) => {
-		const left = itemIn(applied ? after : before, args.item)?.quantity ?? 0;
-		return applied ? `Used 1 of ${args.item}. ${left} left.` : `Uses 1 of ${args.item} (${left} left)`;
-	},
-},
-```
-
-`previewAction` in `src/character.ts` runs the same target lookup and handler as
-`invokeAction` without saving. `previewEffects` in `src/roll.ts` previews all of a roll's
-effects; rolls display it, and `performRoll` checks it before running anything.
+`describe` serves two places, with `applied` telling the tense: the preview under a roll
+("Uses 1 of Arrows (2 left)"), and the announcement after ("Used 1 of Arrows. 1 left.").
 
 Validate arguments with the helpers in `src/ui-lib/actions.ts`, such as `requireString` and
-`optionalPositiveInt`, because arguments often come from user-written YAML.
-
-### Calling an action
-
-Actions are called from a roll's effects:
-
-```yaml
-dice: 1d20+5
-effects:
-  - target: health
-    action: damage
-    args:
-      amount: 5
-```
-
-Components do not call actions directly. Under the hood, `performRoll` calls `invokeAction`
-in `src/character.ts`, which throws `ActionError` when the request is rejected, the target is
-missing, or there is more than one target. `performRoll` shows that message in a notice
-and stops the roll.
-
-### Types with many blocks per character
-
-Most action targets appear once per character. A type that can appear many times, like
-`modifier`, sets `targetKey` in its metadata to the YAML field that identifies one block.
-Callers then pass an argument of that name, and exactly one block must match:
-
-```ts
-static readonly metadata: ComponentMetadata = {
-	type: "modifier",
-	policies: [],
-	targetKey: "name",
-	actions: modifierActions,
-};
-```
-
-```yaml
-effects:
-  - target: modifier
-    action: "on"
-    args:
-      name: Bless
-```
-
-### Types holding named entries
-
-A type whose blocks hold a list of named entries, like `consumable`, sets `entryNames` in
-its metadata: a function returning the names in a block. Actions then take a `name`
-argument and run on the one block holding that entry. Add the `"uniqueEntryNames"` policy
-so a name used twice across the character shows an error.
-
-```ts
-static readonly metadata: ComponentMetadata = {
-	type: "consumable",
-	policies: ["uniqueEntryNames"],
-	actions: consumableActions,
-	entryNames: (attrs) => attrs.consumables.map(c => c.name),
-};
-```
+`optionalPositiveInt`, because arguments come from user-written YAML.
 
 ### How the target is found
 
-`invokeAction` in `src/character.ts`:
+`invokeAction` and `previewAction` in `src/character.ts`:
 
-1. Looks up the handler from the target type's registered metadata.
-2. Gets the character's notes from `getCharacterFiles`, which matches the `character` frontmatter property.
-3. Uses Obsidian's metadata cache to jump to each note's code blocks. Notes with no code blocks
-   are skipped without being read.
-4. Requires exactly one block of the target type.
-5. Edits that note with `vault.process`, re-checking the block's position first.
-   If the note changed since it was found, it falls back to scanning the note's lines.
+1. Look up the component by the effect's `target`, its key, and wrap its action with
+   `blockAction` so it runs on the whole block, with the key added to each step's path.
+2. Find the character's blocks that have that key. For components with `entryNames`, keep
+   only the block holding the entry named by the `name` argument.
+3. Require exactly one block.
+4. Edit that note with `vault.process`, re-checking the block's position first.
 
 Obsidian then re-renders the target block, so open views update automatically.
 
-## Modifiers: bonuses rolls can include
+## Events
 
-A component type can **publish modifiers** by adding a `modifiers` function to its metadata.
-It receives the block's YAML data and returns a list, so one block can publish several.
+Character events, such as "long rest", let many cards react to one moment. Names are
+compared ignoring case and extra spaces.
 
-```ts
-import { Modifier, parseModifierValue } from "../modifiers";
+A component reacts on its own with `onEvent`: given its data and the event's name, it
+returns YAML steps, or none. `describeEvent` gives the preview and the announcement.
+Any card can also react with an `on` list, whose entries name an event, one of the card's
+components as `target`, and an action. `checkSubscriptions` reports mistakes in an `on`
+list, and the card shows them.
 
-const rageModifiers = (attrs: RageAttributes): Modifier[] => [{
-	name: "Rage",
-	value: parseModifierValue(attrs.bonus),
-	active: attrs.raging === true,
-	categories: ["damage"],
-}];
+`reactToEvent` in `src/events.ts` works out one block's reaction on plain data: each
+component's `onEvent`, then each matching `on` entry in order. `previewEvent` and
+`fireEvent` both use it, so previews and firing agree. Firing writes each note once,
+editing blocks from the bottom up so their positions stay valid.
 
-static readonly metadata: ComponentMetadata = {
-	type: "rage",
-	policies: ["unique"],
-	modifiers: rageModifiers,
-};
-```
-
-Build every value with `parseModifierValue`. It returns either a parsed `ModifierValue`
-(the dice to add, one summed flat number, and display text) or an `InvalidModifierValue`
-holding what was written and why it was rejected. Check `value.valid` before using it.
-Rolls refuse to use an invalid value and show the reason.
-
-The built-in [modifier component](../components/modifier.md) in
-`src/ui-lib/modifier-component.ts` is the simplest example, publishing one modifier per block.
-
-For a component that publishes from a `publishes` list in its YAML, like weapons and spells,
-`src/ui-lib/published-modifiers.ts` has the pieces:
-
-1. `modifiersFromPublishes`: use it as the metadata `modifiers` function.
-2. `renderPublishedSwitches(parent, attributes, persist)`: draws a switch for each entry and
-   saves `active` back to that entry. The component needs the `Persistable` capability.
-3. Add the `"uniqueModifierNames"` policy so a duplicated name shows an error.
-
-### How a roll resolves its modifiers
-
-`resolveRollModifiers` in `src/modifiers.ts`:
-
-1. Reads every block among the character's notes in one pass, and asks each type with a
-   `modifiers` function what it publishes.
-2. Picks the modifiers the roll subscribes to by name, plus those sharing one of its categories.
-3. Reports problems instead of guessing: an unknown subscribed name, two modifiers with the
-   same name, or an invalid value.
-4. Combines the dice with `combineNotation`, putting all dice first and summing flat numbers
-   at the end, since the dice library only reads a flat number in last place.
-
-`performRoll` calls it before running effects, and refuses the roll if there are problems.
-
-### Showing live totals
-
-To keep a displayed total current, resolve again when the character changes.
-`BaseComponent.onCharacterChange(callback)` runs a callback, debounced, whenever any of
-the character's notes changes in Obsidian's metadata cache, and stops when the component
-unloads. `AttackComponent.refreshModifiers` in `src/ui-lib/attack-component.ts` is an example.
-
-## Events: rests and other moments
-
-Character events, such as "long rest" or "short rest", let many components react to one
-moment. Event names are compared ignoring case and extra spaces.
-
-### Subscribing
-
-Add `onEvent` to the metadata. Given the block's data and the event's name, it returns the
-YAML steps to apply to that block, or none. Add `describeEvent` for the preview and the
-announcement: one function, with `applied` telling the tense, like action descriptions.
-
-```ts
-static readonly metadata: ComponentMetadata = {
-	type: "consumable",
-	onEvent: (attrs, event) => /* steps refilling entries whose refill lists the event */,
-	describeEvent: ({ before, applied, event }) =>
-		applied ? "Refilled Ki." : "Refills Ki (1 of 4 left)",
-};
-```
-
-Components don't need `onEvent` to be subscribable: any block whose component has
-actions can list subscriptions in an `on` list, and the block runs its own actions when
-the event fires. See [events](../events.md#subscribing-any-component). `checkSubscriptions`
-reports mistakes in an `on` list, and the base component shows them on every card.
-
-### Firing
-
-`reactToEvent` in `src/events.ts` works out one block's reaction on plain data: its
-component's `onEvent`, then each matching `on` entry in order. Failing entries become
-problems while the rest still apply. Both `previewEvent(ctx, name)`, which lists what an
-event would change without saving, and `fireEvent(ctx, name)`, which applies it, use it. Firing writes each of the
-character's notes once, from its current text, editing blocks from the bottom up so their
-positions stay valid, and returns the announcements.
-
-Events are fired by the [rest component](../components/rest.md) and by roll effects with
-`target: event` and `action: emit`, handled in `src/roll.ts`.
+Events are fired by the [events component](../components/events.md), by effects with
+`target: event` and `action: emit`, and by switching on a concentration modifier.

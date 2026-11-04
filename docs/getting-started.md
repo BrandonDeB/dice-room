@@ -47,7 +47,7 @@ The **Dice Preview** at the bottom of the settings rolls a sample die so you can
 3. Type dice notation, such as `2d6+3`, and press **Roll** or Enter.
 4. Click **Leave Room** when you are done.
 
-Clicking a roll in a character sheet also rolls in the Dice view. If the view is not open,
+Clicking a roll on a card also rolls in the Dice view. If the view is not open,
 you will see the notice "Open the Dice View first!"
 
 ## Next

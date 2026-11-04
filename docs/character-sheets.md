@@ -1,34 +1,64 @@
 # Character sheets
 
-A character sheet is made of **components**. Each component is a fenced code block
-with the language `dicelist`, containing YAML. The `type` field says which component it is.
+A character sheet is made of **cards**. Each card is a fenced code block with the language
+`dicelist`, containing YAML. A card has a name, a description and a picture, plus any
+**components** you add to it: rolls, values, modifiers, an inventory, and so on.
 
 ````markdown
 ```dicelist
-type: stats
-stats: [10, 14, 12, 13, 8, 15]
+type: weapon
+name: Longbow
+description: Two-handed, heavy. Range 150/600 ft.
+rolls:
+  - name: Hit
+    dice: 1d20 + {{dex mod}} + {{proficiency}}
+    categories: [attack, ranged]
+  - name: Damage
+    dice: 1d8 + {{dex mod}}
+    categories: [damage]
 ```
 ````
 
-In reading view or live preview, the block becomes an interactive panel. Click it to roll.
+In reading view or live preview, the block becomes an interactive card. Click its buttons to roll.
 
-## Available components
+Nothing about a weapon, spell or character is built in. A weapon is a card with Hit and
+Damage rolls; a spell is a card with rolls, effects that spend a spell slot, and maybe a
+modifier like Bless; a character is a card with values like level and armor class. See the
+[example sheet](example-sheet.md) for a full character to copy.
 
-| Type | Purpose | One per character? |
+## Card fields
+
+| Field | Description |
+| --- | --- |
+| `name` | The card's title. |
+| `type` | A tag shown beside the name, such as `weapon` or `spell`, so you can tell cards apart. It's only a label: any card can have any components. |
+| `description` | Markdown shown under the title. Links and formatting work. |
+| `picture` | An image in your vault, as a path or a wiki link, shown beside the title. |
+| `layout` | `grid` shows the card's rolls and values as tiles, like a sheet's ability scores or skill list. |
+| `on` | [Event subscriptions](events.md): actions this card runs when an event fires. |
+
+## Components
+
+Add a component by writing its key. They're shown in the order you write them.
+
+| Key | What it adds | Limits |
 | --- | --- | --- |
-| [`stats`](components/stats.md) | Ability scores and saving throws | Yes |
-| [`skills`](components/skills.md) | Skill checks | No |
-| [`weapon`](components/attacks.md) | Weapon attacks | No |
-| [`spell`](components/attacks.md) | Spell attacks | No |
-| [`inventory`](components/inventory.md) | Items and quantities | Yes |
-| [`modifier`](components/modifier.md) | A bonus rolls can include, with a switch | No, but each name only once |
-| [`consumable`](components/consumable.md) | Spell slots and other limited uses | No, but each name only once |
-| [`rest`](components/rest.md) | Short and long rest buttons | No |
-| [`health`](components/health.md) | Hit points, hit dice and death saves | Yes |
-| [`character`](components/character.md) | Level, proficiency bonus, armor class and more | Yes |
-| [`conditions`](components/conditions.md) | Conditions and exhaustion | Yes |
-| [`proficiencies`](components/proficiencies.md) | Languages, armor, weapons and tools | No |
-| [`feature`](components/feature.md) | A class feature, trait or feat | No |
+| [`fields`](components/fields.md) | Labelled details, like Class, Speed or Languages | |
+| [`values`](components/values.md) | Named numbers that formulas use, like level or armor class | Each name once per character |
+| [`rolls`](rolls.md) | Buttons that roll dice and run effects | |
+| [`modifiers`](components/modifiers.md) | Bonuses with switches, like Bless or Poisoned | Each name once per character |
+| [`consumables`](components/consumables.md) | Spell slots, hit dice, and other limited uses | Each name once per character |
+| [`inventory`](components/inventory.md) | Items and quantities | One per character |
+| [`health`](components/health.md) | Hit points and temporary hit points | One per character |
+| [`events`](components/events.md) | Buttons for rests and other events | |
+
+A card with a field it doesn't know, such as a misspelled component, shows a warning
+listing the fields it can have.
+
+## Formulas
+
+Dice and numbers anywhere on a card can use the character's values by name, like
+`1d20 + {{dex mod}}`. See [values and formulas](formulas.md).
 
 ## Linking notes to a character
 
@@ -42,21 +72,16 @@ character: Aria Stormwind
 ---
 ```
 
-Components find each other through this property. For example, the skills component
-reads the stat block from any note with the same `character` value.
+Cards find each other through this property: a roll in the spellbook can use values from
+the main sheet and spend spell slots from another note.
 
-If a note has no `character` property, its components only look within that same note.
+If a note has no `character` property, its cards only look within that same note.
 
-Components marked "one per character" must appear only once across all of that
-character's notes. If there are two, components that depend on them report an error.
-
-## Rolls
-
-Every clickable roll can also change other components, such as spending an arrow
-from your inventory. See [rolls and effects](rolls.md).
+Some things must be unique across all of a character's notes: one inventory, one health,
+and each value, modifier and consumable name only once. A card that breaks one of these
+shows an error with links to every card involved.
 
 ## Editing from the sheet
 
-Some components write changes back into your note. For example, changing a quantity
-in the inventory updates the YAML in the code block. Comments and formatting in the
-block are preserved.
+Switches, counters, quantities and hit points write changes back into your note's YAML.
+Comments and formatting in the block are preserved.

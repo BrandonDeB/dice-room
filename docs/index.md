@@ -5,35 +5,34 @@ interactive character sheets inside your notes.
 
 - **Roll together.** Join a shared room and everyone sees each other's dice land in real time.
 - **Customize your dice.** Pick colors, textures, and materials.
-- **Clickable character sheets.** Write small `dicelist` blocks in your notes for stats,
-  skills, attacks, spells, and inventory. Click them to roll.
+- **Clickable character sheets.** Write small `dicelist` cards in your notes, with rolls,
+  values, modifiers and an inventory. Click them to roll. Nothing about one game is built
+  in, so they work for any system.
 - **Rolls have effects.** Rolling a longbow attack can spend an arrow from your inventory.
 
 ## Guides
 
 1. [Getting started](getting-started.md): install the plugin, connect to a server, and join a room.
-2. [Character sheets](character-sheets.md): how `dicelist` blocks work and how notes are linked to a character.
-3. [Rolls, effects and modifiers](rolls.md): writing rolls, having them spend ammo or change other
+2. [Character sheets](character-sheets.md): cards, their components, and how notes are linked to a character.
+3. [Values and formulas](formulas.md): dice and numbers that use the character's values, like `1d20 + {{dex mod}}`.
+4. [Rolls, effects and modifiers](rolls.md): writing rolls, having them spend ammo or change other
    components, and adding bonuses like Bless.
-4. [Events](events.md): rests and other moments, and how blocks subscribe to them.
+5. [Events](events.md): rests and other moments, and how cards subscribe to them.
+6. [Example sheet](example-sheet.md): a whole D&D 5e character to copy.
 
 ## Component reference
 
-- [Stats](components/stats.md): ability scores and saving throws.
-- [Skills](components/skills.md): skill checks using your stat modifiers.
-- [Attacks: weapons and spells](components/attacks.md): to-hit and damage rolls, plus effects.
-- [Inventory](components/inventory.md): items and quantities that other components can change.
-- [Modifier](components/modifier.md): a named bonus with an on/off switch that rolls can include.
-- [Consumables](components/consumable.md): spell slots and other limited uses that refill.
-- [Rest](components/rest.md): short and long rest buttons that refill what's subscribed.
-- [Hit points](components/health.md): hit points, temporary hit points, hit dice and death saves.
-- [Character](components/character.md): level, proficiency bonus, armor class, speed, initiative and passive Perception.
-- [Conditions](components/conditions.md): conditions and exhaustion, applied to your rolls.
-- [Proficiencies](components/proficiencies.md): languages, armor, weapons, and tools with checks.
-- [Feature](components/feature.md): class features, traits and feats, with uses from a consumable.
+- [Fields](components/fields.md): labelled details, like class, speed or range.
+- [Values](components/values.md): named numbers formulas use, like level or armor class, and counters.
+- [Rolls](rolls.md): buttons that roll dice and run effects.
+- [Modifiers](components/modifiers.md): named bonuses with switches, including conditions.
+- [Consumables](components/consumables.md): spell slots and other limited uses that refill.
+- [Inventory](components/inventory.md): items and quantities, with switches like Equipped.
+- [Health](components/health.md): hit points and temporary hit points.
+- [Events](components/events.md): buttons for rests and other events.
 
 ## For developers
 
-- [Components and actions](developers/components-and-actions.md): how to build a new
-  component and let components talk to each other.
+- [Components and actions](developers/components-and-actions.md): how cards are built
+  from components, and how components talk to each other.
 - [Test vault](developers/test-vault.md): a local vault with hot reload for trying out changes.

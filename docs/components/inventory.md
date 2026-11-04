@@ -1,6 +1,7 @@
 # Inventory
 
-Lists a character's items with editable quantities.
+Lists a character's items with editable quantities. Items can have switches, like
+Equipped, and give [modifiers](modifiers.md) while they're on.
 
 **One per character.** Any [roll's effects](../rolls.md#effects)
 can add and remove items from it.
@@ -9,8 +10,8 @@ can add and remove items from it.
 
 ````markdown
 ```dicelist
-type: inventory
-items:
+name: Backpack
+inventory:
   - name: Arrows
     quantity: 20
     description: Standard ammunition for bows
@@ -21,10 +22,9 @@ items:
 
 ## Fields
 
-| Field | Required | Description |
-| --- | --- | --- |
-| `type` | Yes | Must be `inventory`. |
-| `items` | No | List of items. Each has a `name`, a `quantity`, and an optional `description` shown under its name. |
+`inventory` is a list of items. Each has a `name`, a `quantity`, and an optional
+`description` shown under its name. Write `inventory: []` for an empty one that effects
+can add to.
 
 Item names should be unique. If two items share a name, you will see a warning.
 
@@ -33,41 +33,35 @@ Item names should be unique. If two items share a name, you will see a warning.
 Type a new number in an item's box, then press Enter or click away.
 The change is saved into the note's YAML.
 
-## Equipment
+## Switches and modifiers
 
-Items can give [modifiers](modifier.md) while you wear or wield them, such as a +1 to armor
-class and saving throws. Add these fields to an item:
+Items can give [modifiers](modifiers.md), such as a +1 to armor class and saving throws.
+Give an item `switches`, such as Equipped or Attuned, and its modifiers apply only while
+every switch is on. Each switch shows on the item's row. An item with modifiers and no
+switches always gives them.
 
 | Field | Description |
 | --- | --- |
-| `equipped` | Whether it's worn or wielded. The card shows an **Equipped** switch. |
-| `attunement` | `true` for items that need attunement. The card adds an **Attuned** switch. |
-| `attuned` | Whether you're attuned to it. |
-| `modifiers` | The modifiers it gives, written like a spell's [`publishes`](attacks.md#publishing-modifiers) list. |
-
-An item's modifiers apply only while it's equipped, and attuned if it needs attunement.
-Otherwise rolls list them as switched off. More than three attuned items shows a warning.
+| `switches` | Names with on or off, such as `{ Equipped: true, Attuned: false }`. The card saves these for you. |
+| `modifiers` | The modifiers it gives, written like a [`modifiers`](modifiers.md) list. |
 
 ```yaml
-type: inventory
-items:
+inventory:
   - name: Cloak of Protection
     quantity: 1
-    equipped: true
-    attunement: true
-    attuned: true
+    switches: { Equipped: true, Attuned: true }
     modifiers:
       - name: Cloak of Protection
         value: 1
         appliesTo: [armor class, save]
 ```
 
-Modifiers with the `armor class` category raise the [character](character.md) block's
-armor class. Only flat numbers count there, not dice.
+A [value](values.md) with the `armor class` category picks up the +1 while the cloak is
+equipped and attuned.
 
 ## Actions
 
-Other components can run these actions on the inventory.
+[Effects](../rolls.md#effects) and [event subscriptions](../events.md) can run these.
 Item names are matched without regard to case.
 
 ### add

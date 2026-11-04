@@ -1,240 +1,235 @@
 # Rolls, effects and modifiers
 
-A **roll** is anything you click to throw dice, such as an attack's Hit button.
-A roll can have **effects**: changes to other components that happen when you use it,
-like spending an arrow or a spell slot.
-A roll can also pick up **modifiers**: bonuses like Bless (+1d4) that are added to its dice
-while they are switched on.
+A card's `rolls` list gives it buttons. A **roll** throws dice from a
+[formula](formulas.md). It can have **effects**: changes to other components when you use
+it, like spending an arrow or a spell slot. It also picks up **modifiers**: bonuses like
+Bless (+1d4) that are added to its dice while they're switched on.
 
-## Writing a roll
+## Writing rolls
 
-The short form is just the dice:
+````markdown
+```dicelist
+type: weapon
+name: Longbow
+rolls:
+  - name: Hit
+    dice: 1d20 + {{dex mod}} + {{proficiency}}
+    categories: [attack, ranged]
+    effects:
+      - target: inventory
+        action: remove
+        args: { item: Arrows }
+  - name: Damage
+    dice: 1d8 + {{dex mod}}
+    categories: [damage]
+```
+````
+
+Each roll has:
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `name` | Yes | The row's name, such as Hit, Damage or Stealth. |
+| `dice` | No | A [formula](formulas.md), like `1d20 + {{dex mod}}`. Without dice, the button only runs the effects. |
+| `categories` | No | What kind of roll it is, such as `attack` or `save`, so modifiers can apply. See [categories](#categories). |
+| `modifiers` | No | Modifier names to include, whatever their categories. |
+| `effects` | No | What happens when it's used. See [effects](#effects). |
+| `description` | No | Shown under the name. |
+| `button` | No | The button's text. Defaults to **Roll**, or **Use** without dice. |
+
+Each row shows the dice it will throw with modifiers included, which modifiers those are,
+and what its effects will do. These update whenever any of the character's notes change.
+
+With `layout: grid` on the card, rolls show as a grid of buttons, like a skill list, and
+a d20 roll shows only its bonus, such as **Stealth +5**. Everything a row would show is
+read out with the button and shown as its tooltip.
+
+## Buttons without dice
+
+A roll without `dice` is a button that runs its effects, such as casting Goodberry or using
+a feature. Give it a `button` to say what it does:
 
 ```yaml
-hitRoll: 1d20+5
+type: spell
+name: Goodberry
+rolls:
+  - name: Cast
+    button: Cast
+    effects:
+      - target: inventory
+        action: add
+        args: { item: Goodberry, quantity: 10, description: Eat one to restore 1 hit point }
+      - target: consumables
+        action: use
+        args: { name: 1st-level spell slots }
 ```
 
-When the roll has effects, modifiers or extra categories, write it as an object with `dice`
-and any of `effects`, `modifiers` and `categories`:
-
-```yaml
-hitRoll:
-  dice: 1d20+5
-  effects:
-    - target: inventory
-      action: remove
-      args:
-        item: Arrows
-```
-
-## Using note properties in dice
-
-Dice can pull values from a note's frontmatter using double braces:
-
-```yaml
-hitRoll: 1d20+{{Characters/Aria.attackBonus}}
-```
-
-The part before the dot is the note's path from the vault root, without `.md`.
-The part after the dot is the property name. If the note or property is missing,
-the text is left as it is.
+The Dice view doesn't need to be open. `$total` and `$natural` can't be used, since
+nothing is rolled.
 
 ## Effects
 
 Each effect has:
 
-- `target`: the component type to act on, for example `inventory`.
-- `action`: the name of an action that component publishes, for example `remove`.
-  Each component's page lists its actions, such as [inventory actions](components/inventory.md#actions)
-  or [consumable actions](components/consumable.md#actions).
-- `args`: the action's arguments.
+| Field | Required | Description |
+| --- | --- | --- |
+| `target` | Yes | The component to act on, such as `inventory` or `consumables`, or `event` to [fire an event](#firing-events). |
+| `action` | Yes | One of that component's actions, such as `remove`. Each component's page lists them. |
+| `args` | No | The action's arguments. |
+| `if` | No | Only run when this holds. See [conditional effects](#conditional-effects). |
 
-The target must be found exactly once among the character's notes.
+The effect acts on the one card of the character that has that component. For components
+holding named entries, like consumables, modifiers and values, the `name` argument picks
+the card that holds it.
 
-Weapons and spells can also run effects with no roll at all, from a Use or Cast button.
-See [effects without a roll](components/attacks.md#effects-without-a-roll).
+### Before you click
+
+Each roll shows what its effects will do, such as "Uses 1 of Arrows (2 left)". Each line
+links to the card it changes. If an effect would fail, the roll shows why in red instead,
+such as "Not enough Arrows: have 0, need 1", and its button is hidden until there's enough.
+
+### What happens when you click
+
+1. If the Dice view isn't open, or you haven't joined a room, nothing happens and a notice
+   says why. No effects run.
+2. Every effect is checked first. If any would fail, a notice explains why, **nothing is
+   spent, and the dice are not thrown**.
+3. The effects run in order, and the dice are thrown.
+4. A notice announces what the effects did, such as "Used 1 of Arrows. 1 left."
+   A natural 20 or a natural 1 on a d20 is announced too.
 
 ### Using the roll's total
 
 An effect argument written as `$total` is replaced with what the roll came to. Those
-effects run after the dice are thrown, instead of before. For example, healing by the roll:
+effects run after the dice are thrown. For example, a potion that heals by its roll:
 
 ```yaml
-damageRoll:
-  dice: 2d4+2
-  effects:
-    - target: health
-      action: heal
-      args:
-        amount: $total
+rolls:
+  - name: Drink
+    dice: 2d4 + 2
+    effects:
+      - target: health
+        action: heal
+        args: { amount: $total }
 ```
 
 Before you roll, the effect shows as "Heal by the roll's total".
 
+### Conditional effects
+
+An effect with an `if` only runs when its [condition](formulas.md#conditions) holds. After
+a roll, `$total` is what it came to and `$natural` is the d20 that counted. A death saving
+throw that counts successes and failures in two [values](components/values.md):
+
+```yaml
+rolls:
+  - name: Death save
+    dice: 1d20
+    categories: [save]
+    effects:
+      - if: $natural == 20
+        target: health
+        action: heal
+        args: { amount: 1 }
+      - if: $total >= 10 and $natural < 20
+        target: values
+        action: increase
+        args: { name: Death save successes }
+      - if: $natural == 1
+        target: values
+        action: increase
+        args: { name: Death save failures, amount: 2 }
+      - if: $total < 10 and $natural > 1
+        target: values
+        action: increase
+        args: { name: Death save failures }
+```
+
+Before you roll, these show what they'll do and when, such as
+"If $total >= 10 and $natural < 20: Increases Death save successes (now 0)". They don't
+stop the roll, even if they couldn't run right now.
+
+An `if` that doesn't use the roll, like `{{exhaustion}} > 0`, is checked before rolling,
+and the effect is left out when it doesn't hold.
+
 ### Firing events
 
-An effect can fire a character event instead, such as a short or long rest, by using
-`target: event` and `action: emit` with the event's `name`. Everything subscribed to that
-event reacts, as when you take a [rest](components/rest.md): consumables refill if the
-event is in their `refill` list.
+An effect can fire a character [event](events.md) instead, using `target: event` and
+`action: emit` with the event's `name`. Everything subscribed to that event reacts.
 
 ```yaml
 effects:
   - target: event
     action: emit
-    args:
-      name: long rest
+    args: { name: long rest }
 ```
-See [linking notes to a character](character-sheets.md#linking-notes-to-a-character).
-
-### Before you click
-
-Each roll shows what its effects will do, such as "Uses 1 of Arrows (2 left)" or
-"Uses 1 of 1st-level spell slots (3 of 4 left)". Each line links to the block it changes.
-If an effect would fail, the roll shows why in red instead, such as
-"Not enough Arrows: have 0, need 1", and its Roll button is hidden until there is enough again. These update whenever
-any of the character's notes change.
-
-### What happens when you click
-
-1. If the Dice view is not open, or you have not joined a room, nothing happens
-   and a notice tells you why. No effects run.
-2. Every effect is checked first. If any would fail, a notice explains why,
-   **nothing is spent, and the dice are not thrown**.
-3. The effects run in order, and the dice are thrown.
-4. A notice announces what the effects did, such as
-   "Used 1 of Arrows. 1 left." and "Used 1 of 1st-level spell slots. 2 of 4 left."
 
 ## Advantage, disadvantage and critical hits
 
-**Right-click** any d20 roll, or use the context menu key, to choose
-**Roll with advantage**, **Roll with disadvantage**, or [a modifier for that roll](#a-modifier-for-one-roll). The d20 is rolled twice and the
-higher or lower one counts. This works on attack hit rolls, ability checks, saving throws,
-skills and initiative.
+**Right-click** a roll, or use the context menu key, for more ways to roll it:
 
-A [modifier](components/modifier.md) can grant advantage or disadvantage too, by using
-`advantage` or `disadvantage` as its value, for an effect that lasts a while. Active
-[conditions](components/conditions.md) do this for you. As a modifier of your own, for example:
+1. On a roll with a d20: **Roll with advantage**, **Roll with disadvantage**, or
+   [a modifier for that roll](#a-modifier-for-one-roll). The d20 is rolled twice and the
+   higher or lower one counts.
+2. On other rolls: **Roll critical hit (double the dice)**, which doubles every die,
+   including dice added by modifiers, or a modifier for that roll.
 
-```yaml
-type: modifier
-name: Bane
-value: disadvantage
-appliesTo: [attack, save]
-```
-
-Advantage and disadvantage cancel out: with both, the roll is normal.
+A [modifier](components/modifiers.md) can grant advantage or disadvantage too, with
+`advantage` or `disadvantage` as its value, for something that lasts a while, such as
+being poisoned. Advantage and disadvantage cancel out: with both, the roll is normal.
 
 ### A modifier for one roll
 
-For a bonus or penalty that only matters right now, such as exhaustion, a spell cast on
-you this turn, or a DM's ruling, right-click the roll and choose **Roll with a modifier...**.
-In the dialog:
+For a bonus or penalty that only matters right now, such as a spell cast on you this turn
+or a DM's ruling, right-click the roll and choose **Roll with a modifier...**. In the dialog:
 
 1. Type a number like `-4` or dice like `1d4`. This is optional.
 2. On d20 rolls, choose **Normal**, **With advantage** or **With disadvantage**.
-   On damage rolls, switch on **Critical hit** to double the damage dice.
+   On other rolls, switch on **Critical hit** to double the dice.
 3. Press Enter or Roll.
 
-It applies to that roll only, on top of any other modifiers, and nothing is saved to your sheet.
-
-After an attack roll, a natural 20 is announced as a critical hit, and a natural 1 as a
-miss. **Right-click** the Damage roll and choose **Roll critical hit** to double every
-damage die, including dice added by modifiers.
+It applies to that roll only, on top of any other modifiers, and nothing is saved.
 
 ## Modifiers
 
-A roll includes a [modifier](components/modifier.md) while the modifier is switched on and
+A roll includes a [modifier](components/modifiers.md) while the modifier is switched on and
 either:
 
-1. the roll **subscribes** to it by name, or
+1. the roll names it in its `modifiers` list, or
 2. the roll and the modifier share a **category**.
-
-### Subscribing by name
-
-List modifier names under `modifiers`. Names are not case sensitive.
-
-```yaml
-hitRoll:
-  dice: 1d20+5
-  modifiers: [Archery]
-```
 
 ### Categories
 
-Every roll has categories describing what kind of roll it is. A modifier with
-`appliesTo: [attack]` is added to every roll in the `attack` category, without each roll
-having to name it.
+A roll's `categories` describe what kind of roll it is, in your own words. A modifier with
+`appliesTo: [attack]` is added to every roll with the `attack` category, without each roll
+having to name it. Categories aren't case sensitive.
 
-Components give their rolls these categories automatically:
+Pick categories that suit your game and use them the same way across your cards. For D&D,
+the [example sheet](example-sheet.md) uses `attack` and `damage` on weapons and spells,
+`check` and `save` on ability rolls, and the skill or ability's own name, like `stealth`,
+so a modifier with `appliesTo: save` reaches every saving throw and one with
+`appliesTo: stealth` reaches only Stealth checks.
 
-| Component | Roll | Categories |
-| --- | --- | --- |
-| [Weapon](components/attacks.md) | `hitRoll` | `attack`, `weapon` |
-| [Weapon](components/attacks.md) | `damageRoll` | `damage`, `weapon` |
-| [Spell](components/attacks.md) | `hitRoll` | `attack`, `spell` |
-| [Spell](components/attacks.md) | `damageRoll` | `damage`, `spell` |
-| [Stats](components/stats.md) | Ability check | `check`, `ability check`, the ability (`dexterity`) |
-| [Stats](components/stats.md) | Saving throw | `save`, `saving throw`, the ability |
-| [Skills](components/skills.md) | Skill check | `check`, `skill`, the skill (`stealth`), its ability |
-| [Character](components/character.md) | Initiative | `initiative`, `check`, `dexterity` |
-| [Proficiencies](components/proficiencies.md) | Tool check | `check`, `tool`, the tool's name, its ability |
-| [Hit points](components/health.md) | Death save | `death save`, `save` |
-| [Hit points](components/health.md) | Hit die | `hit die` |
-
-So a modifier with `appliesTo: save` reaches every saving throw, and `appliesTo: stealth`
-reaches only Stealth checks.
-
-A roll can add its own with `categories`, for example `categories: [ranged]`,
-so a modifier with `appliesTo: ranged` only affects ranged attacks.
+[Values](components/values.md) have categories too, so modifiers can add to them, such as
+a shield adding 2 to armor class.
 
 ### How modifiers are added
 
-All dice come first and flat numbers are added together at the end. With Bless (1d4) and
-Archery (+2) on, `1d20+5` becomes `1d20+1d4+7`.
+All dice come first and numbers are added together at the end. With Bless (1d4) and
+Archery (+2) on, `1d20+5` becomes `1d20+1d4+7`. A modifier that comes to nothing, like
+exhaustion at level 0, isn't listed.
 
-Rolls show their current total, and a line such as "Includes Bless (1d4), Archery (+2)".
-Modifiers the roll would use but that are switched off are listed too, as "Off: Bless (1d4)".
-Each name links to where the modifier is set: click to open it, or hover for a preview where
-you can switch it on.
-Switching a modifier on or off in any of the character's notes updates them.
+Rolls show a line such as "Includes: Bless (1d4), Archery (+2)". Modifiers the roll would
+use but that are switched off are listed as "Off: Bless (1d4)". Each name links to where
+the modifier is set: click to open it, or hover for a preview where you can switch it on.
 
 ### When a roll refuses
 
-A roll will not be thrown, and shows why, if:
+A roll won't be thrown, and shows why, if:
 
-1. it subscribes to a modifier name that does not exist for the character,
-2. two modifiers it would use share a name,
-3. a modifier it would use has an invalid value, or
-4. its dice use anything other than plain dice and numbers, such as `4d6kh3`,
-   while a modifier applies.
+1. its dice have a mistake, or use a value the character doesn't have,
+2. it names a modifier the character doesn't have,
+3. two modifiers it would use share a name, or
+4. a modifier it would use has a value with a mistake.
 
-Modifier problems are checked before effects run, so no ammo is spent on a refused roll.
-
-## Which rolls support effects and modifiers
-
-| Component | Rolls | Effects | Modifiers |
-| --- | --- | --- | --- |
-| [Weapon and spell](components/attacks.md) | `hitRoll`, `damageRoll` | Yes | Yes |
-| [Stats](components/stats.md) | A check and a save per ability | With `rolls` | Yes |
-| [Skills](components/skills.md) | One per skill | With `rolls` | Yes |
-| [Character](components/character.md) | Initiative | With `rolls` | Yes |
-
-### Settings for generated rolls
-
-Stats, skills and the character block make their rolls themselves. Give one of them extra
-modifiers or effects with a `rolls` map, keyed by the roll's name (not case sensitive):
-`Dexterity check` or `Dexterity save` on stats, a skill name like `Stealth` on skills, and
-`Initiative` on the character block. Each entry takes the same `modifiers`, `effects` and
-`categories` as an attack's roll.
-
-```yaml
-type: skills
-proficiency: [Stealth]
-rolls:
-  Stealth:
-    modifiers: [Cloak of Elvenkind]
-```
-
-The stats and skills cards list the active modifiers that apply to their rolls, such as
-"Includes Bless (1d4)".
+These are checked before effects run, so nothing is spent on a refused roll.
