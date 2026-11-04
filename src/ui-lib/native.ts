@@ -231,12 +231,12 @@ export function rollMenu(d20: boolean, roll: (change: RollChange) => void): Roll
 		: [{ title: 'Roll critical hit (double the dice)', onClick: () => roll({ critical: true }) }, modifierChoice(roll, 'damage')];
 }
 
-let segmentedCount = 0;
-
 /**
  * Choices shown side by side as one control, with one selected, like Disadvantage,
- * Normal and Advantage. Built from native radio buttons, so arrow keys move between
- * them and screen readers announce a group of options.
+ * Normal and Advantage. They're Obsidian's own buttons, with the selected one
+ * highlighted like a dialog's main button, so they follow the theme. For keyboards and
+ * screen readers they act as one group of options: Tab reaches the selected one, and
+ * arrow keys move the selection.
  */
 export function createSegmentedControl(
 	parent: HTMLElement,
@@ -245,15 +245,29 @@ export function createSegmentedControl(
 	selected: string,
 	onChange: (value: string) => void,
 ): HTMLElement {
-	const name = `dicelist-segmented-${++segmentedCount}`;
 	const group = parent.createDiv({ cls: 'dicelist-segmented', attr: { role: 'radiogroup', 'aria-label': label } });
-	for (const option of options) {
-		const item = group.createEl('label', { cls: 'dicelist-segment' });
-		const input = item.createEl('input', { type: 'radio', attr: { name, value: option.value } });
-		input.checked = option.value === selected;
-		item.createSpan({ text: option.label });
-		input.addEventListener('change', () => { if (input.checked) onChange(option.value); });
-	}
+	const buttons = options.map(option => group.createEl('button', { text: option.label, attr: { type: 'button', role: 'radio' } }));
+	const select = (index: number, focus: boolean) => {
+		buttons.forEach((button, i) => {
+			const on = i === index;
+			button.toggleClass('mod-cta', on);
+			button.setAttr('aria-checked', String(on));
+			button.tabIndex = on ? 0 : -1;
+		});
+		if (focus) buttons[index].focus();
+		onChange(options[index].value);
+	};
+	buttons.forEach((button, index) => {
+		button.addEventListener('click', () => select(index, false));
+		button.addEventListener('keydown', (event: KeyboardEvent) => {
+			const step = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1
+				: event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 0;
+			if (step === 0) return;
+			event.preventDefault();
+			select((index + step + buttons.length) % buttons.length, true);
+		});
+	});
+	select(Math.max(0, options.findIndex(option => option.value === selected)), false);
 	return group;
 }
 
