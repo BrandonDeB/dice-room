@@ -72,6 +72,7 @@ export class Card extends MarkdownRenderChild implements HoverParent {
 		}
 
 		const layout = data.layout === 'grid' ? 'grid' : 'list';
+		let grid: HTMLElement | null = null;
 		for (const component of componentsOf(data)) {
 			if (!component.render) continue;
 			const view: ComponentView = {
@@ -80,6 +81,7 @@ export class Card extends MarkdownRenderChild implements HoverParent {
 				ctx: this.host.ctx,
 				owner: this,
 				layout,
+				grid: () => grid ??= el.createDiv({ cls: 'dicelist-card-content dicelist-roll-grid' }),
 				persist: steps => this.host.persist(underKey(component.key, steps)),
 				roll: roll => this.host.roll(roll),
 				refresh: update => { this.refreshers.push(update); },

@@ -104,15 +104,14 @@ Dividing rounds down, so `({{dex}} - 10) / 2` is the ability modifier.
 ## Skills
 
 A roll per skill: the ability modifier, plus proficiency where proficient. For expertise,
-add `2 * {{proficiency}}` instead. Perception is also a hidden value, so Passive Perception
-can use it.
+add `2 * {{proficiency}}` instead. Perception is also a value, so Passive Perception can use it.
 
 ````markdown
 ```dicelist
 name: Skills
 layout: grid
 values:
-  - { name: perception, value: "{{wis mod}} + {{proficiency}}", hidden: true }
+  - { name: perception, value: "{{wis mod}} + {{proficiency}}" }
 rolls:
   - { name: Acrobatics, dice: "1d20 + {{dex mod}}", categories: [check, skill, acrobatics] }
   - { name: Animal Handling, dice: "1d20 + {{wis mod}}", categories: [check, skill, animal handling] }

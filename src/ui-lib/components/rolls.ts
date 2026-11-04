@@ -212,7 +212,8 @@ export const rollsComponent: CardComponent<unknown[]> = {
 		if (view.layout === 'grid') {
 			// Tiles with rolls inside are narrower, so six abilities fit on a row.
 			const tiles = rolls.some(roll => roll.rolls || roll.value != null);
-			const grid = view.el.createDiv({ cls: ['dicelist-card-content', 'dicelist-roll-grid', ...(tiles ? ['dicelist-tile-grid'] : [])] });
+			const grid = view.grid();
+			if (tiles) grid.addClass('dicelist-tile-grid');
 			problemsEl = view.el.createDiv({ cls: 'dicelist-card-content' });
 			for (const roll of rolls) {
 				lines.push(...(roll.rolls || roll.value != null

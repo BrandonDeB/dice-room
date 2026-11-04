@@ -98,7 +98,7 @@ export const valuesComponent: CardComponent<ValueEntry[]> = {
 
 	render(view) {
 		const list = entries(view.data);
-		const grid = view.layout === 'grid' ? view.el.createDiv({ cls: 'dicelist-card-content dicelist-roll-grid' }) : null;
+		const grid = view.layout === 'grid' ? view.grid() : null;
 		const shown: { name: string; show: (total: string, detail: (el: HTMLElement) => void) => void }[] = [];
 
 		list.forEach((entry, index) => {

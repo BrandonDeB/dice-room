@@ -112,6 +112,11 @@ If your plugin does not need CSS, delete this file.
 	padding: var(--setting-items-padding-y, var(--size-4-3)) var(--setting-items-padding-x, var(--size-4-4));
 }
 
+/* Nothing to show yet, like a list of problems with none: take no space. */
+.dicelist-card .dicelist-card-content:empty {
+	display: none;
+}
+
 /* Callouts inside a card keep their own padding and line up with the rows. */
 .dicelist-card .setting-items > .dicelist-callout {
 	margin: var(--size-4-2) var(--setting-items-padding-x, var(--size-4-4));
