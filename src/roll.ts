@@ -107,11 +107,19 @@ export function rollOutcome(notation: {
 	return { total: total + (notation.op === '-' ? -constant : constant), natural };
 }
 
+/** Dice that have been thrown: what they came to, and when they finish landing. */
+export interface ThrownRoll {
+	/** Known as soon as they're thrown, since results are decided first. */
+	outcome: RollOutcome;
+	/** Resolves once the dice have landed in the Dice view. */
+	landed: Promise<void>;
+}
+
 /** Where dice actually get thrown. Implemented by the plugin using the Dice view. */
 export interface DiceRoller {
 	ready(): boolean;
-	/** Throw the dice. Returns what they came to, or null if it isn't known. */
-	roll(notation: string): RollOutcome | null;
+	/** Throw the dice, or return null if they couldn't be thrown. */
+	roll(notation: string): ThrownRoll | null;
 }
 
 /** Write `$total` as an effect argument to use the roll's total, e.g. heal by what was rolled. */
@@ -295,7 +303,11 @@ export async function performRoll(
 	const announcements = await runImmediateEffects(ctx, character, effects, true);
 	if (!announcements) return;
 
-	const outcome = roller.roll(modifiers.notation);
+	const thrown = roller.roll(modifiers.notation);
+	// Results are decided before the dice are thrown, but wait for them to land, so the
+	// notice and anything using the total don't give the result away early.
+	await thrown?.landed;
+	const outcome = thrown?.outcome;
 	const total = outcome?.total ?? null;
 
 	if (hasD20(modifiers.notation)) {

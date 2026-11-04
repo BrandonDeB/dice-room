@@ -118,13 +118,15 @@ such as "Not enough Arrows: have 0, need 1", and its button is hidden until ther
 2. Every effect is checked first. If any would fail, a notice explains why, **nothing is
    spent, and the dice are not thrown**.
 3. The effects run in order, and the dice are thrown.
-4. A notice announces what the effects did, such as "Used 1 of Arrows. 1 left."
-   A natural 20 or a natural 1 on a d20 is announced too.
+4. Once your dice have landed in the Dice view, effects using the roll's result run, and a
+   notice announces what everything did, such as "Used 1 of Arrows. 1 left." A natural 20
+   or a natural 1 on a d20 is announced too. Waiting means the notice never gives the
+   result away before you see the dice.
 
 ### Using the roll's total
 
 An effect argument written as `$total` is replaced with what the roll came to. Those
-effects run after the dice are thrown. For example, a potion that heals by its roll:
+effects run once the dice have landed. For example, a potion that heals by its roll:
 
 ```yaml
 rolls:

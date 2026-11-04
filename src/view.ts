@@ -3,7 +3,7 @@ import { DiceBox, DiceNotation } from '@3d-dice/dice-box-threejs';
 import DiceRoomPlugin from "./main";
 import { CustomDice } from "./types";
 import JoinRoomScreen from "./screens/join-room"
-import { RollOutcome, rollOutcome } from "./roll";
+import { ThrownRoll, rollOutcome } from "./roll";
 
 export const VIEW_TYPE_DICE = 'dice-view';
 
@@ -154,7 +154,15 @@ export class DiceView extends ItemView {
 	}
 
 	/** Roll for the room. Returns the total, known up front because results are pre-rolled. */
-	public rollDice(notation: string): RollOutcome | null {
+	/** Resolves each of your own rolls, oldest first, once its dice have landed. */
+	private landingQueue: (() => void)[] = [];
+
+	/** Your next roll has landed, or can't be shown: let whatever waits on it go ahead. */
+	private landNext() {
+		this.landingQueue.shift()?.();
+	}
+
+	public rollDice(notation: string): ThrownRoll | null {
 		const results = new DiceNotation(notation, true);
 		if (this.ws && this.ws.readyState == WebSocket.OPEN) {
 			this.ws.send(JSON.stringify({
@@ -163,7 +171,17 @@ export class DiceView extends ItemView {
 				"results": results.stringify(true),
 				"room":  this.room,
 			}));
-			return rollOutcome(results);
+			// The room sends the roll back, and it's thrown then. Don't wait forever if
+			// it never comes, such as when the connection drops.
+			const landed = new Promise<void>(resolve => {
+				const done = () => { window.clearTimeout(timeout); resolve(); };
+				const timeout = window.setTimeout(() => {
+					this.landingQueue = this.landingQueue.filter(entry => entry !== done);
+					resolve();
+				}, 15000);
+				this.landingQueue.push(done);
+			});
+			return { outcome: rollOutcome(results), landed };
 		} else {
 			new Notice("Join a room to roll your dice!");
 			return null;
@@ -196,8 +214,13 @@ export class DiceView extends ItemView {
 					clearTimeout(popupTimeoutID);
 				}
 				const roller = this.rollers.get(data.user);
+				const own = String(data.user) === String(currentUser);
 				if (roller) {
-					roller.roll(notation).catch((err: unknown) => console.error(err));
+					roller.roll(notation)
+						.catch((err: unknown) => console.error(err))
+						.finally(() => { if (own) this.landNext(); });
+				} else if (own) {
+					this.landNext();
 				}
 			} else if (data.type == "join") {
 				const rollView = document.getElementById('scene-container');
@@ -229,6 +252,7 @@ export class DiceView extends ItemView {
 
 					currentUser = 0;
 					this.room = "";
+					while (this.landingQueue.length > 0) this.landNext();
 					this.ws?.close();
 					this.destroyAllRollers();
 					this.onOpen();
