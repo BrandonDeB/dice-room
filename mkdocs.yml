@@ -1,5 +1,6 @@
 site_name: Dice Room
 site_description: Roll 3D dice with friends and build interactive character sheets in Obsidian.
+site_url: https://dice.bdebaro.me/
 repo_url: https://github.com/BrandonDeB/dice-room
 repo_name: BrandonDeB/dice-room
 edit_uri: edit/master/docs/
