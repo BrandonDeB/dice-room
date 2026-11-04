@@ -1,5 +1,5 @@
 import { MarkdownPostProcessorContext } from "obsidian";
-import { ABILITIES, Ability, SKILLABILITY, Skill, abilityNamed, getAbilityModifier } from "./abilites";
+import { ABILITIES, Ability, SKILLABILITY, Skill, getAbilityModifier } from "./abilites";
 import { describeLookupProblem, findUniqueBlock } from "./character";
 
 /**
@@ -15,9 +15,6 @@ export interface Sheet {
 	proficiencyBonus: number;
 	/** The modifier for an ability, or 0 without a stats block. */
 	abilityModifier(ability: Ability): number;
-	isSaveProficient(ability: Ability): boolean;
-	/** Ability modifier, plus the proficiency bonus if proficient in the save. */
-	saveBonus(ability: Ability): number;
 	skillProficiency(skill: Skill): 'expertise' | 'proficient' | null;
 	/** Ability modifier, plus the proficiency bonus (twice with expertise). */
 	skillBonus(skill: Skill): number;
@@ -41,7 +38,7 @@ function lowerList(value: unknown): string[] {
 export async function loadSheet(ctx: MarkdownPostProcessorContext): Promise<Sheet> {
 	const [character, stats, skills] = await Promise.all([
 		findUniqueBlock<{ level?: unknown }>(ctx, 'character'),
-		findUniqueBlock<{ stats?: unknown; proficiencies?: unknown; proficiencyBonus?: unknown }>(ctx, 'stats'),
+		findUniqueBlock<{ stats?: unknown; proficiencyBonus?: unknown }>(ctx, 'stats'),
 		findUniqueBlock<{ proficiency?: unknown; expertise?: unknown }>(ctx, 'skills'),
 	]);
 
@@ -52,8 +49,6 @@ export async function loadSheet(ctx: MarkdownPostProcessorContext): Promise<Shee
 	const fallbackBonus = typeof statsData.proficiencyBonus === 'number' ? statsData.proficiencyBonus : 2;
 	const proficiencyBonus = level !== null ? proficiencyForLevel(level) : fallbackBonus;
 
-	const saveProficiencies = new Set((Array.isArray(statsData.proficiencies) ? statsData.proficiencies : [])
-		.map(abilityNamed).filter(Boolean));
 	const skillsData = skills.status === 'found' ? skills.match.data : {};
 	const proficient = lowerList(skillsData.proficiency);
 	const expertise = lowerList(skillsData.expertise);
@@ -66,8 +61,6 @@ export async function loadSheet(ctx: MarkdownPostProcessorContext): Promise<Shee
 			const score = scores[ABILITIES.indexOf(ability)];
 			return typeof score === 'number' ? getAbilityModifier(score) : 0;
 		},
-		isSaveProficient: ability => saveProficiencies.has(ability),
-		saveBonus: ability => sheet.abilityModifier(ability) + (sheet.isSaveProficient(ability) ? proficiencyBonus : 0),
 		skillProficiency(skill) {
 			const name = skill.toLowerCase();
 			return expertise.includes(name) ? 'expertise' : proficient.includes(name) ? 'proficient' : null;
