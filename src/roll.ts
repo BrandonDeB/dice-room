@@ -159,6 +159,11 @@ function effectError(effect: Effect, err: unknown): string {
 	return `Could not run ${effect.action} on ${effect.target}`;
 }
 
+/** The card an effect names with `card`, if any. */
+function effectCard(effect: Effect): string | undefined {
+	return typeof effect.card === 'string' && effect.card.trim() !== '' ? effect.card.trim() : undefined;
+}
+
 /** Effects with `target: event` fire a character event instead of running an action. */
 function isEventEffect(effect: Effect): boolean {
 	return effect.target.trim().toLowerCase() === 'event';
@@ -187,11 +192,11 @@ async function previewEffect(ctx: MarkdownPostProcessorContext, effect: Effect):
 	}
 	if (usesTotal(effect)) {
 		// The total isn't known yet: check the target with a stand-in, and say what will happen.
-		const preview = await previewAction(ctx, effect.target, effect.action, withTotal(effect, 1).args ?? {});
+		const preview = await previewAction(ctx, effect.target, effect.action, withTotal(effect, 1).args ?? {}, effectCard(effect));
 		const action = effect.action.charAt(0).toUpperCase() + effect.action.slice(1);
 		return { effect, message: `${action} by the roll's total`, target: preview.target };
 	}
-	const preview = await previewAction(ctx, effect.target, effect.action, effect.args ?? {});
+	const preview = await previewAction(ctx, effect.target, effect.action, effect.args ?? {}, effectCard(effect));
 	return { effect, message: preview.message, target: preview.target };
 }
 
@@ -202,7 +207,7 @@ async function runEffect(ctx: MarkdownPostProcessorContext, effect: Effect): Pro
 		const messages = await fireEvent(ctx, name);
 		return `${name.charAt(0).toUpperCase()}${name.slice(1)}: ${messages.join(' ') || 'nothing changed.'}`;
 	}
-	return invokeAction(ctx, effect.target, effect.action, effect.args ?? {});
+	return invokeAction(ctx, effect.target, effect.action, effect.args ?? {}, effectCard(effect));
 }
 
 /** Whether an effect's `if` holds. Effects without one always run. */

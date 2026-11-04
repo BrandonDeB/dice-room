@@ -278,6 +278,7 @@ export const consumablesComponent: CardComponent<ConsumableAttributes> = {
 	key: 'consumables',
 	label: 'Consumables',
 	actions: consumableActions,
+	entryLabel: 'consumable',
 	entryNames: attrs => entries(attrs).map(entryName).filter((name): name is string => name !== null),
 	onEvent: consumableOnEvent,
 	describeEvent: describeConsumableEvent,

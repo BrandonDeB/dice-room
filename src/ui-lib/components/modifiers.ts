@@ -106,6 +106,7 @@ const modifierActions: ActionMap<ModifierFields[]> = {
 export const modifiersComponent: CardComponent<ModifierFields[]> = {
 	key: 'modifiers',
 	label: 'Modifiers',
+	entryLabel: 'modifier',
 	entryNames: data => entries(data).map(entryName).filter((name): name is string => name !== null),
 	actions: modifierActions,
 	modifiers: data => entries(data).map(modifierFromFields).filter((modifier): modifier is Modifier => modifier !== null),

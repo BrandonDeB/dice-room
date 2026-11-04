@@ -89,6 +89,7 @@ const valueActions: ActionMap<ValueEntry[]> = {
 export const valuesComponent: CardComponent<ValueEntry[]> = {
 	key: 'values',
 	label: 'Values',
+	entryLabel: 'value',
 	entryNames: data => entries(data).map(entryName).filter((name): name is string => name !== null),
 	actions: valueActions,
 	values: data => entries(data).flatMap((entry): ValueDefinition[] => {

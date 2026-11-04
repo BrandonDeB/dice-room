@@ -41,7 +41,10 @@ Everything else is optional:
 | `render(view)` | Draw rows into `view.el`. See [drawing](#drawing). |
 | `actions` | Actions effects and `on` lists can run. See [actions](#actions-how-components-talk-to-each-other). |
 | `unique` | Only one card per character may have it, so effects find it without a name. |
-| `entryNames` | The names of the entries it holds. Effects pick the card by the `name` argument, and each name may be used once per character. |
+| `entryNames` | The names of the entries it holds. Effects pick the card holding the named entry, and each name may be used once per character. |
+| `entryArg` | The argument that names an entry, like `item` for inventories. Defaults to `name`. |
+| `entryLabel` | What one entry is called in messages, like `item`. |
+| `creates` | Actions that can make an entry no card holds yet, like `add` on inventories. |
 | `modifiers` | Modifiers it publishes. See [modifiers](#modifiers). |
 | `values` | Values it publishes for formulas. See [values](#values-and-formulas). |
 | `onEvent`, `describeEvent` | How it reacts to events. See [events](#events). |
@@ -151,10 +154,14 @@ Validate arguments with the helpers in `src/ui-lib/actions.ts`, such as `require
 
 1. Look up the component by the effect's `target`, its key, and wrap its action with
    `blockAction` so it runs on the whole block, with the key added to each step's path.
-2. Find the character's blocks that have that key. For components with `entryNames`, keep
-   only the block holding the entry named by the `name` argument.
-3. Require exactly one block.
-4. Edit that note with `vault.process`, re-checking the block's position first.
+2. Find the character's blocks that have that key, keeping only the one named by the
+   effect's `card` if it has one.
+3. For components with `entryNames`, keep the block holding the entry named by the
+   `entryArg` argument. If no block holds it and the action is in `creates`, use the only
+   block with the component, or ask for `card` when there are several. An entry can't be
+   created on one card while another already holds it.
+4. Require exactly one block.
+5. Edit that note with `vault.process`, re-checking the block's position first.
 
 Obsidian then re-renders the target block, so open views update automatically.
 

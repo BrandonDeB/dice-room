@@ -1,4 +1,4 @@
-import { Notice, Setting } from 'obsidian';
+import { Setting } from 'obsidian';
 import { Modifier } from '../../modifiers';
 import { ActionError, ActionMap, optionalPositiveInt, requireString } from '../actions';
 import { CardComponent, ComponentView } from '../component';
@@ -147,21 +147,23 @@ function renderItem(view: ComponentView<Inventory>, item: InventoryItem, index: 
 	}
 }
 
-/** Items with quantities. Effects add and remove them; items can give modifiers. */
+/**
+ * Items with quantities. A character can have several inventories, such as equipment,
+ * spell components and treasure, but each item name only once. Effects add and remove
+ * items, and items can give modifiers.
+ */
 export const inventoryComponent: CardComponent<Inventory> = {
 	key: 'inventory',
 	label: 'Inventory',
-	unique: true,
+	entryNames: data => itemsOf(data).map(item => item.name).filter((name): name is string => typeof name === 'string' && name.trim() !== ''),
+	entryArg: 'item',
+	entryLabel: 'item',
+	creates: ['add'],
 	actions: inventoryActions,
 	modifiers: itemModifiers,
 
 	render(view) {
 		const items = itemsOf(view.data);
-		const names = new Set<string>();
-		for (const item of items) {
-			if (names.has(item.name?.toLowerCase())) new Notice('Item names must be unique');
-			names.add(item.name?.toLowerCase());
-		}
 		if (items.length === 0) {
 			new Setting(view.el).setName('No items yet').setDesc('Add items here, or let a roll effect add them.');
 			return;

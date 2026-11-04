@@ -48,6 +48,12 @@ export interface CardComponent<T = any> {
 	 * `name` argument, and each name may be used only once per character.
 	 */
 	entryNames?: (data: T) => string[];
+	/** The argument naming an entry, like `item` for inventories. Defaults to `name`. */
+	entryArg?: string;
+	/** What one entry is called in messages, like "item". Defaults to the label. */
+	entryLabel?: string;
+	/** Actions that can create an entry no card holds yet, like adding a new item. */
+	creates?: string[];
 	actions?: ActionMap<T>;
 	/** YAML edits when a character event fires, such as consumables refilling. */
 	onEvent?: (data: T, event: string) => YamlStep[];

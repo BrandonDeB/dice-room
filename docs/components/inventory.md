@@ -1,10 +1,12 @@
 # Inventory
 
-Lists a character's items with editable quantities. Items can have switches, like
-Equipped, and give [modifiers](modifiers.md) while they're on.
+Lists items with editable quantities. Items can have switches, like Equipped, and give
+[modifiers](modifiers.md) while they're on.
 
-**One per character.** Any [roll's effects](../rolls.md#effects)
-can add and remove items from it.
+A character can have as many inventories as you like, such as equipment, spell components
+and treasure, but **each item name only once** across all of them, ignoring case. If two
+share a name, each card shows an error with links to the others. Any
+[roll's effects](../rolls.md#effects) can add and remove items.
 
 ## Example
 
@@ -26,7 +28,6 @@ inventory:
 `description` shown under its name. Write `inventory: []` for an empty one that effects
 can add to.
 
-Item names should be unique. If two items share a name, you will see a warning.
 
 ## Editing quantities
 
@@ -62,6 +63,20 @@ equipped and attuned.
 ## Actions
 
 [Effects](../rolls.md#effects) and [event subscriptions](../events.md) can run these.
+An effect finds the inventory holding the item by its name, wherever it is.
+
+Adding an item no inventory has yet goes to the character's only inventory. With several,
+say which with the effect's `card`, the card's name:
+
+```yaml
+effects:
+  - target: inventory
+    action: add
+    card: Spell components
+    args: { item: Goodberry, quantity: 10 }
+```
+
+Adding to an item that already exists adds to it wherever it is, so `card` isn't needed.
 Item names are matched without regard to case.
 
 ### add

@@ -45,7 +45,7 @@ export function checkPolicies(character: CharacterData, data: Record<string, unk
 				const holders = blocks.flatMap(block => hasComponent(block.data, component.key)
 					? entryNames(block.data[component.key]).filter(name => normalizeName(name) === normalizeName(own)).map(() => block)
 					: []);
-				const violation = duplicates(holders, own, component.label.toLowerCase());
+				const violation = duplicates(holders, own, component.entryLabel ? `${component.entryLabel}s` : component.label.toLowerCase());
 				if (violation) violations.push(violation);
 			}
 		}

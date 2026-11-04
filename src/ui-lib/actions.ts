@@ -52,6 +52,8 @@ export interface Effect {
 	args?: ActionArgs;
 	/** Only run when this holds, such as `$total >= 10` or `{{exhaustion}} > 0`. */
 	if?: string;
+	/** The card to act on, by its name, when the character has several with the component. */
+	card?: string;
 }
 
 /** An expected failure whose message is safe to show the user. */

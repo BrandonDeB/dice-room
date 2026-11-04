@@ -150,15 +150,18 @@ export interface BlockTarget {
 /**
  * Find the action and the one block it should change among the character's notes.
  * The target is a component key, like `inventory`. Components holding named entries
- * (consumables, values, modifiers) pick the block holding the entry named by `name`.
- * Shared by previews and real runs, so both pick the same target.
- * Throws ActionError with a user-facing message if that isn't possible.
+ * (items, consumables, values, modifiers) pick the block holding the named entry. An
+ * action that creates entries, like adding an item no card holds yet, goes to the only
+ * card with the component, or to the one `card` names. Shared by previews and real runs,
+ * so both pick the same target. Throws ActionError with a user-facing message if that
+ * isn't possible.
  */
 async function resolveActionTarget(
 	ctx: MarkdownPostProcessorContext,
 	target: string,
 	action: string,
 	args: ActionArgs,
+	card?: string,
 ): Promise<ActionTarget> {
 	const key = target.trim();
 	const component = getComponent(key);
@@ -166,24 +169,50 @@ async function resolveActionTarget(
 	const definition = blockAction(component, action);
 	if (!definition) throw new ActionError(`${component.label} has no action named "${action}"`);
 
-	const entryNames = component.entryNames;
-	const wanted = entryNames ? args.name : undefined;
-	if (entryNames && (typeof wanted !== 'string' || wanted.trim() === '')) {
-		throw new ActionError(`Missing "name" to choose which of the ${component.label.toLowerCase()} to change`);
-	}
-	const isTarget = (b: BlockLocation) => hasComponent(b.data, key) &&
-		(!entryNames || entryNames(b.data[key]).some(name => sameKey(name, wanted)));
+	const label = component.label.toLowerCase();
+	const named = (b: BlockLocation) => card === undefined || sameKey(b.data.name, card);
+	const all = (await findAllBlocks(ctx)).filter(m => hasComponent(m.location.data, key));
+	const cards = all.filter(m => named(m.location));
+	if (card !== undefined && cards.length === 0) throw new ActionError(`No card named "${card}" has ${label}`);
 
-	const matches = (await findAllBlocks(ctx)).filter(m => isTarget(m.location));
-	if (matches.length !== 1) {
-		const lookup: UniqueLookup = matches.length === 0
-			? { status: 'missing' }
-			: { status: 'duplicate', matches };
-		const what = entryNames ? `${component.label.toLowerCase()} named "${wanted}"` : component.label.toLowerCase();
-		throw new ActionError(describeLookupProblem(what, lookup));
+	const pick = (matches: BlockMatch[], isTarget: (b: BlockLocation) => boolean, what: string): ActionTarget => {
+		if (matches.length !== 1) {
+			const lookup: UniqueLookup = matches.length === 0 ? { status: 'missing' } : { status: 'duplicate', matches };
+			throw new ActionError(describeLookupProblem(what, lookup));
+		}
+		const { file, location, data } = matches[0];
+		return { key, definition, file, hint: location, isTarget, before: data };
+	};
+
+	const entryNames = component.entryNames;
+	if (!entryNames) {
+		return pick(cards, b => hasComponent(b.data, key) && named(b), card === undefined ? label : `${label} on "${card}"`);
 	}
-	const { file, location, data } = matches[0];
-	return { key, definition, file, hint: location, isTarget, before: data };
+
+	const entryArg = component.entryArg ?? 'name';
+	const entry = component.entryLabel ?? label;
+	const wanted = args[entryArg];
+	if (typeof wanted !== 'string' || wanted.trim() === '') {
+		throw new ActionError(`Missing "${entryArg}" to choose which ${entry} to change`);
+	}
+	const holds = (b: BlockLocation) => hasComponent(b.data, key) && entryNames(b.data[key]).some(name => sameKey(name, wanted));
+	const holders = all.filter(m => holds(m.location));
+	const inCard = holders.filter(m => named(m.location));
+	if (inCard.length > 0 || !component.creates?.includes(action)) {
+		if (holders.length > 0 && inCard.length === 0) {
+			throw new ActionError(`${wanted} is in ${holders.map(m => `"${m.data.name ?? m.file.basename}"`).join(', ')}, not "${card}"`);
+		}
+		return pick(inCard, b => holds(b) && named(b), `${entry} named "${wanted}"`);
+	}
+	// A new entry: it can't also exist on another card, since names are unique per character.
+	if (holders.length > 0) {
+		throw new ActionError(`${wanted} is already in "${holders[0].data.name ?? holders[0].file.basename}". Leave out card to add to it there.`);
+	}
+	if (cards.length > 1) {
+		throw new ActionError(`This character has ${cards.length} cards with ${label}. Say which to add ${wanted} to with card, like card: ${cards[0].data.name ?? 'Backpack'}`);
+	}
+	const chosen = cards[0]?.location.data.name;
+	return pick(cards, b => hasComponent(b.data, key) && (card !== undefined ? named(b) : sameKey(b.data.name, chosen)), label);
 }
 
 /** What an action would do, worked out without changing anything. */
@@ -202,8 +231,9 @@ export async function previewAction(
 	targetType: string,
 	action: string,
 	args: ActionArgs = {},
+	card?: string,
 ): Promise<ActionPreview> {
-	const target = await resolveActionTarget(ctx, targetType, action, args);
+	const target = await resolveActionTarget(ctx, targetType, action, args, card);
 	const steps = target.definition.run(target.before, args);
 	const after = applyStepsToData(target.before, steps);
 	return {
@@ -225,8 +255,9 @@ export async function invokeAction(
 	targetType: string,
 	action: string,
 	args: ActionArgs = {},
+	card?: string,
 ): Promise<string | undefined> {
-	const { key, definition, file, hint, isTarget } = await resolveActionTarget(ctx, targetType, action, args);
+	const { key, definition, file, hint, isTarget } = await resolveActionTarget(ctx, targetType, action, args, card);
 
 	// Errors thrown inside vault.process are captured and re-thrown after,
 	// so a rejected action leaves the file untouched.

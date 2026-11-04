@@ -100,10 +100,11 @@ Each effect has:
 | `action` | Yes | One of that component's actions, such as `remove`. Each component's page lists them. |
 | `args` | No | The action's arguments. |
 | `if` | No | Only run when this holds. See [conditional effects](#conditional-effects). |
+| `card` | No | The name of the card to act on, when the character has several with the component, such as adding a new item to one of several [inventories](components/inventory.md#actions). |
 
-The effect acts on the one card of the character that has that component. For components
-holding named entries, like consumables, modifiers and values, the `name` argument picks
-the card that holds it.
+The effect acts on the one card of the character that has that component, or the card
+named by `card`. For components holding named entries, the entry's name picks the card
+that holds it: `item` for inventories, and `name` for consumables, modifiers and values.
 
 ### Before you click
 

@@ -60,7 +60,7 @@ Add a component by writing its key. They're shown in the order you write them.
 | [`rolls`](rolls.md) | Buttons that roll dice and run effects | |
 | [`modifiers`](components/modifiers.md) | Bonuses with switches, like Bless or Poisoned | Each name once per character |
 | [`consumables`](components/consumables.md) | Spell slots, hit dice, and other limited uses | Each name once per character |
-| [`inventory`](components/inventory.md) | Items and quantities | One per character |
+| [`inventory`](components/inventory.md) | Items and quantities | Each item name once per character |
 | [`health`](components/health.md) | Hit points and temporary hit points | One per character |
 | [`events`](components/events.md) | Buttons for rests and other events | |
 
@@ -89,8 +89,8 @@ the main sheet and spend spell slots from another note.
 
 If a note has no `character` property, its cards only look within that same note.
 
-Some things must be unique across all of a character's notes: one inventory, one health,
-and each value, modifier and consumable name only once. A card that breaks one of these
+Some things must be unique across all of a character's notes: only one card can have
+health, and each item, value, modifier and consumable name can be used only once. A card that breaks one of these
 shows an error with links to every card involved.
 
 ## Editing from the sheet
