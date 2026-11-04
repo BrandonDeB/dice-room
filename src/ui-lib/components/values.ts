@@ -62,7 +62,8 @@ function describeChange(present: string, past: string) {
 const change = (by: (value: number, args: Record<string, unknown>) => number) =>
 	(data: ValueEntry[], args: Record<string, unknown>) => {
 		const { index, entry, value } = requireNumber(data, args);
-		return [{ op: 'set' as const, path: [index, 'value'], value: clamp(entry, by(value, args)) }];
+		const next = clamp(entry, by(value, args));
+		return next === value ? [] : [{ op: 'set' as const, path: [index, 'value'], value: next }];
 	};
 
 /** Change a plain number by `name`, from effects and event subscriptions. Min and max still hold. */

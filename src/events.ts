@@ -118,6 +118,8 @@ export function reactToEvent(
 		}
 		try {
 			const steps = definition.run(current, subscription.args);
+			// Nothing to change, like restoring hit points that are already full: say nothing.
+			if (steps.length === 0) continue;
 			const after = applyStepsToData(current, steps);
 			const message = definition.describe?.({ before: current, after, args: subscription.args, applied });
 			if (message) reaction.messages.push(message);
