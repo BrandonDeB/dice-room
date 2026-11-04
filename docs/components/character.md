@@ -28,6 +28,7 @@ speed: 30 ft
 | `level` | No | 1 to 20. Sets the proficiency bonus. |
 | `armorClass` | No | Your armor class. |
 | `speed` | No | Your speed, such as `30 ft`. |
+| `rolls` | No | Extra modifiers or effects for its rolls. See [settings for generated rolls](../rolls.md#settings-for-generated-rolls). |
 
 ## What it shows
 

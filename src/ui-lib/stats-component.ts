@@ -2,10 +2,9 @@ import { ABILITIES, Ability, abilityNamed, getAbilityModifier } from 'src/abilit
 import { d20, loadSheet, proficiencyForLevel } from '../sheet';
 import { BaseAttributes, BaseComponent, ComponentMetadata } from './base-component';
 import { Rollable } from './capabilities';
-import { Roll } from '../roll';
-import { DiceNotation } from './ui-types';
-import { addRollMenu, advantageChoices, createCallout, createCard, formatBonus } from './native';
-import { Advantage } from '../modifiers';
+import { Roll, generatedRoll } from '../roll';
+import { addRollMenu, advantageChoices, createCallout, createCard, formatBonus, renderModifierList } from './native';
+import { Advantage, modifiersForCategories } from '../modifiers';
 
 export interface StatAttributes extends BaseAttributes {
 	stats: number[];
@@ -13,6 +12,8 @@ export interface StatAttributes extends BaseAttributes {
 	proficiencies?: string[];
 	/** Added to proficient saving throws when there is no character block with a level. Defaults to +2. */
 	proficiencyBonus?: number;
+	/** Extra settings per roll, keyed like "Dexterity check" or "Wisdom save". */
+	rolls?: unknown;
 }
 
 export class StatsComponent extends BaseComponent<StatAttributes> implements Rollable {
@@ -65,7 +66,15 @@ export class StatsComponent extends BaseComponent<StatAttributes> implements Rol
 				cls: 'dicelist-ability',
 				attr: { role: 'button', tabindex: '0', 'aria-label': `Roll ${ability} check, ${check}` },
 			});
-			const rollCheck = (advantage?: Advantage) => this.onRoll({ notation: new DiceNotation(d20(checkBonus)), advantage });
+			const name = ability.toLowerCase();
+			const rollCheck = (advantage?: Advantage) => this.onRoll({
+				...generatedRoll(d20(checkBonus), ['check', 'ability check', name], this.attributes.rolls, `${ability} check`),
+				advantage,
+			});
+			const saveRoll = (advantage?: Advantage) => ({
+				...generatedRoll(d20(saveBonus), ['save', 'saving throw', name], this.attributes.rolls, `${ability} save`),
+				advantage,
+			});
 			tile.addEventListener('click', () => rollCheck());
 			addRollMenu(tile, advantageChoices(rollCheck));
 			tile.addEventListener('keydown', (event: KeyboardEvent) => {
@@ -82,12 +91,27 @@ export class StatsComponent extends BaseComponent<StatAttributes> implements Rol
 
 			this.addRollButton(tile, 'Save', save,
 				`Roll ${ability} saving throw, ${save}${isProficient ? ', proficient' : ''}`,
-				() => d20(saveBonus), isProficient);
+				saveRoll, isProficient);
 		});
+
+		this.showActiveModifiers(card, ['check', 'ability check', 'save', 'saving throw', ...ABILITIES.map(a => a.toLowerCase())]);
+	}
+
+	/** "Includes Bless (1d4)": modifiers affecting these rolls, kept current as they switch. */
+	private showActiveModifiers(card: HTMLElement, categories: string[]) {
+		const line = card.createDiv({ cls: 'dicelist-card-content' });
+		const refresh = async () => {
+			const modifiers = await modifiersForCategories(this.ctx, categories);
+			line.empty();
+			line.toggle(modifiers.length > 0);
+			renderModifierList(line, 'Includes', modifiers, 'roll-modifiers', this.ctx.sourcePath, this);
+		};
+		this.guard(refresh());
+		this.onCharacterChange(() => this.guard(refresh()));
 	}
 
 	private addRollButton(parent: HTMLElement, label: string, value: string, description: string,
-		notation: () => string, highlighted = false) {
+		makeRoll: (advantage?: Advantage) => Roll, highlighted = false) {
 		const button = parent.createEl('button', {
 			cls: ['dicelist-roll-button', ...(highlighted ? ['is-proficient'] : [])],
 			attr: { type: 'button', 'aria-label': description },
@@ -97,9 +121,9 @@ export class StatsComponent extends BaseComponent<StatAttributes> implements Rol
 		button.addEventListener('click', (event) => {
 			// Don't also roll the check from the tile around this button.
 			event.stopPropagation();
-			this.onRoll({ notation: new DiceNotation(notation()) });
+			this.onRoll(makeRoll());
 		});
-		addRollMenu(button, advantageChoices(advantage => this.onRoll({ notation: new DiceNotation(notation()), advantage })));
+		addRollMenu(button, advantageChoices(advantage => this.onRoll(makeRoll(advantage))));
 		button.addEventListener('keydown', (event) => event.stopPropagation());
 	}
 }

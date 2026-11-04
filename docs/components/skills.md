@@ -22,6 +22,7 @@ expertise: [Sleight of Hand]
 | `type` | Yes | Must be `skills`. |
 | `proficiency` | No | Skills you are proficient in. Adds your proficiency bonus. |
 | `expertise` | No | Skills you have expertise in. Adds twice your proficiency bonus. |
+| `rolls` | No | Extra modifiers or effects for its rolls. See [settings for generated rolls](../rolls.md#settings-for-generated-rolls). |
 
 The proficiency bonus comes from the [character](character.md) block's level, or the
 [stats](stats.md) block's `proficiencyBonus`, or +2. A skill listed under both fields counts as expertise.

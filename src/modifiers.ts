@@ -187,6 +187,16 @@ export function combineNotation(base: string, values: ModifierValue[]): string |
 	return notation === '' ? String(total) : notation + signed(total);
 }
 
+/**
+ * Active modifiers that apply to any of these roll categories, for cards whose rolls
+ * are generated (stats, skills) to show what is affecting them.
+ */
+export async function modifiersForCategories(ctx: MarkdownPostProcessorContext, categories: string[]): Promise<PublishedModifier[]> {
+	const wanted = new Set(categories.map(normalizeName));
+	return (await findModifiers(ctx)).filter(modifier =>
+		modifier.active && modifier.value.valid && modifier.categories.some(category => wanted.has(normalizeName(category))));
+}
+
 /** Advantage and disadvantage cancel out: with both, the roll is normal. */
 function combineAdvantage(sources: (Advantage | undefined)[]): Advantage | undefined {
 	const advantage = sources.includes('advantage');

@@ -63,6 +63,22 @@ export function parseRoll(field: unknown, defaultCategories: string[] = []): Rol
 	return null;
 }
 
+/**
+ * A roll a component builds itself, such as a check or a save, with categories so
+ * modifiers can apply, and any extra settings for it from the block's `rolls` map:
+ *   rolls:
+ *     Stealth:
+ *       modifiers: [Cloak of Elvenkind]
+ * Roll names are matched ignoring case.
+ */
+export function generatedRoll(dice: string, categories: string[], rolls: unknown, name: string): Roll {
+	const settings = rolls && typeof rolls === 'object' && !Array.isArray(rolls)
+		? Object.entries(rolls).find(([key]) => key.trim().toLowerCase() === name.toLowerCase())?.[1]
+		: undefined;
+	const extra = settings && typeof settings === 'object' ? settings : {};
+	return parseRoll({ ...extra, dice }, categories) ?? { notation: new DiceNotation(dice), categories };
+}
+
 function isEffect(value: unknown): value is Effect {
 	const e = value as Effect;
 	return !!e && typeof e.target === 'string' && typeof e.action === 'string';

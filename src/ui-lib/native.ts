@@ -1,5 +1,5 @@
 import { HoverParent, Keymap, Menu, Setting, SettingGroup, TFile, setIcon } from 'obsidian';
-import type { Advantage } from '../modifiers';
+import type { Advantage, PublishedModifier } from '../modifiers';
 import { getApp } from '../app-provider';
 
 /*
@@ -172,6 +172,24 @@ export function createBlockLink(
 		});
 	});
 	return link;
+}
+
+/** One line listing modifiers, like "Includes Bless (1d4), Archery (+2)", each linking to where it is set. */
+export function renderModifierList(
+	parent: HTMLElement,
+	label: string,
+	modifiers: PublishedModifier[],
+	cls: string,
+	sourcePath: string,
+	hoverParent?: HoverParent,
+) {
+	if (modifiers.length === 0) return;
+	const line = parent.createDiv({ cls, text: `${label} ` });
+	modifiers.forEach((modifier, i) => {
+		if (i > 0) line.appendText(', ');
+		createBlockLink(line, modifier.name, { file: modifier.file, line: modifier.lineStart }, sourcePath, hoverParent);
+		line.appendText(` (${modifier.value.valid ? modifier.value.text : modifier.value.raw})`);
+	});
 }
 
 /** Another way to make a roll, offered on right-click: "Roll with advantage". */

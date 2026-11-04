@@ -3,9 +3,9 @@ import { getApp } from "./../app-provider"
 import { App, Setting } from "obsidian";
 import { Persistable, Rollable, YamlStep } from "./capabilities";
 import { renderPublishedSwitches } from "./published-modifiers";
-import { addRollMenu, advantageChoices, createBlockLink, createCard, formatBonus } from "./native";
+import { addRollMenu, advantageChoices, createBlockLink, createCard, formatBonus, renderModifierList } from "./native";
 import { Roll, RollField, parseRoll, previewEffects } from "../roll";
-import { PublishedModifier, normalizeName, readableNotation, resolveRollModifiers } from "../modifiers";
+import { normalizeName, readableNotation, resolveRollModifiers } from "../modifiers";
 import { Sheet, d20, loadSheet } from "../sheet";
 import { Ability, abilityNamed } from "../abilites";
 
@@ -163,8 +163,8 @@ export abstract class AttackComponent extends BaseComponent<AttackAttributes> im
 			}
 			// "Includes Archery (+2)" and "Off: Bless (1d4)". Each name links to where
 			// the modifier is set, so it can be previewed and switched on from there.
-			this.renderModifierList(desc, 'Includes', resolved.applied, 'roll-modifiers');
-			this.renderModifierList(desc, 'Off:', resolved.inactive, 'roll-modifiers roll-modifiers-off');
+			renderModifierList(desc, 'Includes', resolved.applied, 'roll-modifiers', this.ctx.sourcePath, this);
+			renderModifierList(desc, 'Off:', resolved.inactive, 'roll-modifiers roll-modifiers-off', this.ctx.sourcePath, this);
 			// "Uses 1 of Arrows (2 left)", linking to the block it changes.
 			for (const effect of effects) {
 				if (!effect.message || !effect.target) continue;
@@ -174,17 +174,6 @@ export abstract class AttackComponent extends BaseComponent<AttackAttributes> im
 		}
 	}
 
-
-	/** One line listing modifiers, each name linking to where it is set. */
-	private renderModifierList(parent: HTMLElement, label: string, modifiers: PublishedModifier[], cls: string) {
-		if (modifiers.length === 0) return;
-		const line = parent.createDiv({ cls, text: `${label} ` });
-		modifiers.forEach((modifier, i) => {
-			if (i > 0) line.appendText(', ');
-			createBlockLink(line, modifier.name, { file: modifier.file, line: modifier.lineStart }, this.ctx.sourcePath, this);
-			line.appendText(` (${modifier.value.valid ? modifier.value.text : modifier.value.raw})`);
-		});
-	}
 
 	/** The vault resource path for the `picture` field, or null if there is none or it isn't found. */
 	private picturePath(): string | null {

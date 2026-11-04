@@ -1,8 +1,7 @@
 import { Setting } from 'obsidian';
 import { BaseAttributes, BaseComponent, ComponentMetadata } from './base-component';
 import { Rollable } from './capabilities';
-import { Roll } from '../roll';
-import { DiceNotation } from './ui-types';
+import { Roll, generatedRoll } from '../roll';
 import { addRollMenu, advantageChoices, createCallout, createCard, formatBonus } from './native';
 import { Advantage } from '../modifiers';
 import { d20, loadSheet, proficiencyForLevel } from '../sheet';
@@ -14,6 +13,8 @@ export interface CharacterAttributes extends BaseAttributes {
 	level?: unknown;
 	armorClass?: unknown;
 	speed?: unknown;
+	/** Extra settings for the Initiative roll, keyed "Initiative". */
+	rolls?: unknown;
 }
 
 /**
@@ -59,8 +60,7 @@ export class CharacterComponent extends BaseComponent<CharacterAttributes> imple
 
 		const initiative = sheet.abilityModifier('Dexterity');
 		const rollInitiative = (advantage?: Advantage) => this.onRoll({
-			notation: new DiceNotation(d20(initiative)),
-			categories: ['initiative', 'check', 'dexterity'],
+			...generatedRoll(d20(initiative), ['initiative', 'check', 'dexterity'], this.attributes.rolls, 'Initiative'),
 			advantage,
 		});
 		new Setting(card)

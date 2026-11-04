@@ -2,13 +2,15 @@ import { SKILLS, Skill, SKILLABILITY } from 'src/abilites';
 import { BaseAttributes, BaseComponent, ComponentMetadata } from './base-component';
 import { d20, loadSheet } from '../sheet';
 import { Rollable } from './capabilities';
-import { Roll } from '../roll';
-import { DiceNotation } from './ui-types';
-import { advantageChoices, createCallout, createCard, createRollButtonGrid, formatBonus } from './native';
+import { Roll, generatedRoll } from '../roll';
+import { advantageChoices, createCallout, createCard, createRollButtonGrid, formatBonus, renderModifierList } from './native';
+import { modifiersForCategories } from '../modifiers';
 
 export interface SkillAttributes extends BaseAttributes {
 	proficiency: Skill[] | null;
 	expertise: Skill[] | null;
+	/** Extra settings per skill roll, keyed by skill name. */
+	rolls?: unknown;
 }
 
 export class SkillsComponent extends BaseComponent<SkillAttributes> implements Rollable {
@@ -47,16 +49,31 @@ export class SkillsComponent extends BaseComponent<SkillAttributes> implements R
 			const value = sheet.abilityModifier(SKILLABILITY[skill])
 				+ (level === 'expertise' ? 2 : level === 'proficient' ? 1 : 0) * sheet.proficiencyBonus;
 			const bonus = formatBonus(value);
+			const skillRoll = () => generatedRoll(d20(value),
+				['check', 'skill', name, SKILLABILITY[skill].toLowerCase()], this.attributes.rolls, skill);
 			return {
 				label: skill,
 				value: bonus,
 				description: `Roll ${skill} (${SKILLABILITY[skill]}), ${bonus}${level ? `, ${level === 'expertise' ? 'expertise' : 'proficient'}` : ''}`,
-				onClick: () => this.onRoll({ notation: new DiceNotation(d20(value)) }),
-				menu: advantageChoices(advantage => this.onRoll({ notation: new DiceNotation(d20(value)), advantage })),
+				onClick: () => this.onRoll(skillRoll()),
+				menu: advantageChoices(advantage => this.onRoll({ ...skillRoll(), advantage })),
 			};
 		});
 
-		createRollButtonGrid(createCard(this.containerEl, undefined, this.typeLabel), buttons, 'dicelist-skills');
+		const card = createCard(this.containerEl, undefined, this.typeLabel);
+		createRollButtonGrid(card, buttons, 'dicelist-skills');
+
+		// "Includes Guidance (1d4)": modifiers affecting skill rolls, kept current as they switch.
+		const line = card.createDiv({ cls: 'dicelist-card-content' });
+		const categories = ['check', 'skill', ...SKILLS.map(skill => skill.toLowerCase())];
+		const refresh = async () => {
+			const modifiers = await modifiersForCategories(this.ctx, categories);
+			line.empty();
+			line.toggle(modifiers.length > 0);
+			renderModifierList(line, 'Includes', modifiers, 'roll-modifiers', this.ctx.sourcePath, this);
+		};
+		this.guard(refresh());
+		this.onCharacterChange(() => this.guard(refresh()));
 	}
 
 }

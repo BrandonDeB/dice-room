@@ -157,6 +157,15 @@ Components give their rolls these categories automatically:
 | [Weapon](components/attacks.md) | `damageRoll` | `damage`, `weapon` |
 | [Spell](components/attacks.md) | `hitRoll` | `attack`, `spell` |
 | [Spell](components/attacks.md) | `damageRoll` | `damage`, `spell` |
+| [Stats](components/stats.md) | Ability check | `check`, `ability check`, the ability (`dexterity`) |
+| [Stats](components/stats.md) | Saving throw | `save`, `saving throw`, the ability |
+| [Skills](components/skills.md) | Skill check | `check`, `skill`, the skill (`stealth`), its ability |
+| [Character](components/character.md) | Initiative | `initiative`, `check`, `dexterity` |
+| [Hit points](components/health.md) | Death save | `death save`, `save` |
+| [Hit points](components/health.md) | Hit die | `hit die` |
+
+So a modifier with `appliesTo: save` reaches every saving throw, and `appliesTo: stealth`
+reaches only Stealth checks.
 
 A roll can add its own with `categories`, for example `categories: [ranged]`,
 so a modifier with `appliesTo: ranged` only affects ranged attacks.
@@ -189,5 +198,25 @@ Modifier problems are checked before effects run, so no ammo is spent on a refus
 | Component | Rolls | Effects | Modifiers |
 | --- | --- | --- | --- |
 | [Weapon and spell](components/attacks.md) | `hitRoll`, `damageRoll` | Yes | Yes |
-| [Stats](components/stats.md) | One per ability, generated | Not yet | Not yet |
-| [Skills](components/skills.md) | One per skill, generated | Not yet | Not yet |
+| [Stats](components/stats.md) | A check and a save per ability | With `rolls` | Yes |
+| [Skills](components/skills.md) | One per skill | With `rolls` | Yes |
+| [Character](components/character.md) | Initiative | With `rolls` | Yes |
+
+### Settings for generated rolls
+
+Stats, skills and the character block make their rolls themselves. Give one of them extra
+modifiers or effects with a `rolls` map, keyed by the roll's name (not case sensitive):
+`Dexterity check` or `Dexterity save` on stats, a skill name like `Stealth` on skills, and
+`Initiative` on the character block. Each entry takes the same `modifiers`, `effects` and
+`categories` as an attack's roll.
+
+```yaml
+type: skills
+proficiency: [Stealth]
+rolls:
+  Stealth:
+    modifiers: [Cloak of Elvenkind]
+```
+
+The stats and skills cards list the active modifiers that apply to their rolls, such as
+"Includes Bless (1d4)".
