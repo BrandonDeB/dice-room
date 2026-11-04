@@ -3,7 +3,6 @@ import { BaseAttributes, BaseComponent, ComponentMetadata } from './base-compone
 import { Persistable, YamlStep } from './capabilities';
 import { ActionError, ActionMap, requireString } from './actions';
 import { createCard } from './native';
-import { Modifier, parseModifierValue } from '../modifiers';
 import { normalizeEventName } from '../events';
 
 export interface ConditionsAttributes extends BaseAttributes {
@@ -14,8 +13,9 @@ export interface ConditionsAttributes extends BaseAttributes {
 }
 
 /**
- * The standard conditions, and what each does to your own rolls when it can be modelled
- * as a modifier. The rest are tracked only.
+ * The standard conditions, and what each does to your own rolls, as a reminder: conditions
+ * are tracked here and applied when rolling (right-click a roll for advantage or
+ * disadvantage), not added to every roll automatically.
  */
 const CONDITIONS: { name: string; value?: string; appliesTo?: string[] }[] = [
 	{ name: 'Blinded', value: 'disadvantage', appliesTo: ['attack'] },
@@ -53,27 +53,6 @@ function requireCondition(args: Record<string, unknown>): string {
 	return condition.name.toLowerCase();
 }
 
-/** Conditions with roll effects publish modifiers; exhaustion takes 2 off every d20 roll per level. */
-function conditionModifiers(attrs: ConditionsAttributes): Modifier[] {
-	const active = activeList(attrs);
-	const modifiers: Modifier[] = CONDITIONS
-		.filter(condition => condition.value)
-		.map(condition => ({
-			name: condition.name,
-			value: parseModifierValue(condition.value),
-			active: active.includes(condition.name.toLowerCase()),
-			categories: condition.appliesTo ?? [],
-		}));
-	const exhaustion = exhaustionOf(attrs);
-	modifiers.push({
-		name: 'Exhaustion',
-		value: parseModifierValue(-2 * Math.max(exhaustion, 1)),
-		active: exhaustion > 0,
-		categories: ['attack', 'check', 'save'],
-	});
-	return modifiers;
-}
-
 /** Add or remove a condition by `name`, from effects or event subscriptions. */
 const conditionActions: ActionMap<ConditionsAttributes> = {
 	add: {
@@ -107,9 +86,8 @@ export class ConditionsComponent extends BaseComponent<ConditionsAttributes> imp
 	static readonly metadata: ComponentMetadata = {
 		type: "conditions",
 		label: "Conditions",
-		policies: ['unique', 'uniqueModifierNames'],
+		policies: ['unique'],
 		actions: conditionActions,
-		modifiers: conditionModifiers,
 		onEvent: conditionsOnEvent,
 		describeEvent: ({ after }) => `Exhaustion is now ${exhaustionOf(after)}.`,
 	}
@@ -128,7 +106,7 @@ export class ConditionsComponent extends BaseComponent<ConditionsAttributes> imp
 			void this.onPersist([{ op: 'set', path: ['exhaustion'], value: level }]);
 		const row = new Setting(card)
 			.setName('Exhaustion')
-			.setDesc(exhaustion === 0 ? 'None' : `Level ${exhaustion} of ${MAX_EXHAUSTION}: ${-2 * exhaustion} to every d20 roll${exhaustion === MAX_EXHAUSTION ? '. Level 6 is death.' : ''}`);
+			.setDesc(exhaustion === 0 ? 'None' : `Level ${exhaustion} of ${MAX_EXHAUSTION}: ${-2 * exhaustion} to every d20 roll. Add it with "Roll with a modifier" when you roll.${exhaustion === MAX_EXHAUSTION ? ' Level 6 is death.' : ''}`);
 		row.addExtraButton(button => button.setIcon('minus').setTooltip('Remove a level of exhaustion')
 			.setDisabled(exhaustion === 0).onClick(() => setExhaustion(exhaustion - 1)));
 		row.addExtraButton(button => button.setIcon('plus').setTooltip('Add a level of exhaustion')
@@ -136,7 +114,9 @@ export class ConditionsComponent extends BaseComponent<ConditionsAttributes> imp
 
 		for (const condition of CONDITIONS) {
 			const key = condition.name.toLowerCase();
-			const effect = condition.value ? `${condition.value === 'advantage' ? 'Advantage' : 'Disadvantage'} on ${condition.appliesTo?.join(' and ')} rolls` : 'Tracked only';
+			const effect = condition.value
+				? `${condition.value === 'advantage' ? 'Advantage' : 'Disadvantage'} on ${condition.appliesTo?.join(' and ')} rolls: right-click a roll to apply it`
+				: 'Tracked only';
 			new Setting(card)
 				.setName(condition.name)
 				.setDesc(effect)
